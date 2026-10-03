@@ -1,0 +1,155 @@
+{% extends 'web/base.html' %}
+{% load static web_extras %}
+{% block title %}{% t 'employees.title' %} · {{ BUSINESS_NAME }}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div class="page-title">{% t 'employees.title' %}</div>
+  <button class="btn primary" type="button" data-open-employee data-mode="create">
+    <span class="material-icons-round">person_add</span>{% t 'employees.new' %}
+  </button>
+</div>
+
+<div class="page-body">
+  <div class="card pad-0">
+    {% if employees %}
+      <div class="table-wrap">
+        <table class="data">
+          <thead><tr>
+            <th>{% t 'employees.name' %}</th><th>{% t 'employees.username' %}</th>
+            <th>{% t 'employees.role' %}</th><th>{% t 'employees.phone' %}</th>
+            <th>{% t 'employees.pin' %}</th><th>{% t 'common.status' %}</th>
+            <th class="actions">{% t 'common.actions' %}</th>
+          </tr></thead>
+          <tbody>
+            {% for emp in employees %}
+              <tr>
+                <td class="strong">{{ emp.display_name }}</td>
+                <td class="muted">{{ emp.username }}</td>
+                <td><span class="badge info">{% tenum 'role' emp.role %}</span></td>
+                <td>{{ emp.phone|default:'—' }}</td>
+                <td>{% if emp.has_pin %}<span class="badge success">{% t 'employees.pinSet' %}</span>
+                  {% else %}<span class="badge">{% t 'employees.pinNotSet' %}</span>{% endif %}</td>
+                <td>{% if emp.is_active %}<span class="badge success">{% t 'common.active' %}</span>
+                  {% else %}<span class="badge">{% t 'common.inactive' %}</span>{% endif %}</td>
+                <td class="actions">
+                  <div class="btn-row" style="justify-content:flex-end">
+                    <button class="btn sm" type="button" data-open-employee data-mode="edit"
+                            data-id="{{ emp.pk }}" data-name="{{ emp.first_name }} {{ emp.last_name }}"
+                            data-first="{{ emp.first_name }}" data-last="{{ emp.last_name }}"
+                            data-username="{{ emp.username }}" data-phone="{{ emp.phone }}"
+                            data-role="{{ emp.role }}" data-language="{{ emp.language }}">
+                      <span class="material-icons-round">edit</span>{% t 'common.edit' %}
+                    </button>
+                    <button class="btn sm" type="button" data-set-pin data-id="{{ emp.pk }}">{% t 'employees.setPin' %}</button>
+                    {% if emp.is_active %}
+                      <form method="post" action="{% url 'web:employee-deactivate' emp.pk %}">{% csrf_token %}
+                        <button class="btn sm danger" type="button"
+                                data-confirm="{% t 'employees.deactivate' %} — {{ emp.display_name }}">{% t 'employees.deactivate' %}</button>
+                      </form>
+                    {% endif %}
+                  </div>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}<div class="empty">{% t 'common.noData' %}</div>{% endif %}
+  </div>
+</div>
+
+<div class="modal-backdrop" id="employee-modal" hidden>
+  <div class="modal">
+    <form method="post" action="{% url 'web:employee-save' %}">
+      {% csrf_token %}
+      <input type="hidden" name="id" id="emp-id">
+      <div class="modal-head"><h3 id="emp-title">{% t 'employees.new' %}</h3></div>
+      <div class="modal-body">
+        <div class="form-grid">
+          <div class="field"><label class="field-label">{% t 'employees.name' %}</label>
+            <input class="input" name="first_name" id="emp-first" required></div>
+          <div class="field"><label class="field-label">Familiya</label>
+            <input class="input" name="last_name" id="emp-last"></div>
+          <div class="field"><label class="field-label">{% t 'employees.username' %}</label>
+            <input class="input" name="username" id="emp-username" required></div>
+          <div class="field"><label class="field-label">{% t 'employees.phone' %}</label>
+            <input class="input" name="phone" id="emp-phone"></div>
+          <div class="field"><label class="field-label">{% t 'employees.role' %}</label>
+            <select class="select" name="role" id="emp-role">
+              <option value="cashier">{% t 'role.cashier' %}</option><option value="manager">{% t 'role.manager' %}</option></select></div>
+          <div class="field"><label class="field-label">{% t 'settings.language' %}</label>
+            <select class="select" name="language" id="emp-language">
+              <option value="uz">O'zbekcha</option><option value="ru">Русский</option></select></div>
+          <div class="field"><label class="field-label">{% t 'employees.pin' %}</label>
+            <input class="input" name="pin" inputmode="numeric" maxlength="8" placeholder="{% t 'employees.pinRule' %}"></div>
+        </div>
+        <input type="hidden" name="is_active" value="on">
+      </div>
+      <div class="modal-foot">
+        <button class="btn" type="button" data-close-modal>{% t 'common.cancel' %}</button>
+        <button class="btn primary" type="submit">{% t 'common.save' %}</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="pin-modal" hidden>
+  <div class="modal">
+    <form method="post" id="pin-form">
+      {% csrf_token %}
+      <div class="modal-head"><h3>{% t 'employees.setPin' %}</h3></div>
+      <div class="modal-body">
+        <div class="field"><label class="field-label">{% t 'employees.pin' %}</label>
+          <input class="input" name="pin" inputmode="numeric" maxlength="8" placeholder="{% t 'employees.pinRule' %}" required></div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn" type="button" data-close-pin>{% t 'common.cancel' %}</button>
+        <button class="btn primary" type="submit">{% t 'common.save' %}</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  (function () {
+    var modal = document.getElementById('employee-modal');
+    function openEmp(d) {
+      document.getElementById('emp-id').value = d.id || '';
+      document.getElementById('emp-first').value = d.first || '';
+      document.getElementById('emp-last').value = d.last || '';
+      document.getElementById('emp-username').value = d.username || '';
+      document.getElementById('emp-phone').value = d.phone || '';
+      document.getElementById('emp-role').value = d.role || 'cashier';
+      document.getElementById('emp-language').value = d.language || 'uz';
+      var uname = document.getElementById('emp-username');
+      uname.disabled = !!d.id;
+      document.getElementById('emp-title').textContent = d.id ? "{% t 'employees.edit' %}" : "{% t 'employees.new' %}";
+      modal.hidden = false;
+    }
+    document.querySelectorAll('[data-open-employee]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        openEmp({
+          mode: b.getAttribute('data-mode'), id: b.getAttribute('data-id'),
+          first: b.getAttribute('data-first'), last: b.getAttribute('data-last'),
+          username: b.getAttribute('data-username'), phone: b.getAttribute('data-phone'),
+          role: b.getAttribute('data-role'), language: b.getAttribute('data-language'),
+        });
+      });
+    });
+    modal.querySelector('[data-close-modal]').addEventListener('click', function () { modal.hidden = true; });
+
+    var pinModal = document.getElementById('pin-modal');
+    var pinForm = document.getElementById('pin-form');
+    document.querySelectorAll('[data-set-pin]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        pinForm.action = '/employees/' + b.getAttribute('data-id') + '/set-pin/';
+        pinModal.hidden = false;
+      });
+    });
+    pinModal.querySelector('[data-close-pin]').addEventListener('click', function () { pinModal.hidden = true; });
+  })();
+</script>
+{% endblock %}

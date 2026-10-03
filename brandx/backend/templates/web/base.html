@@ -1,0 +1,51 @@
+{% load static web_extras %}<!doctype html>
+<html lang="{{ brand_lang }}">
+<head>
+  <meta charset="utf-8">
+  <title>{% block title %}{{ BUSINESS_NAME }}{% endblock %}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- Fonts are self-hosted (static/fonts) - no external CDN round-trip,
+       so icons/text never pop in late on slow connections. -->
+  <link rel="preload" href="{% static 'fonts/icons-LDItaoyNOAY6Uewc665JcIzCKsKc_M9flwmPq_HTTw.woff2' %}" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="{% static 'css/fonts.css' %}?v=4">
+  <link rel="stylesheet" href="{% static 'css/brandx.css' %}?v=4">
+  {% block head %}{% endblock %}
+</head>
+<body>
+  <div class="app-shell"{% if not platform %} id="app-shell"{% endif %}>
+    {% if platform %}
+      <div class="main">
+        <header class="topbar">
+          <div class="brand-logo" style="background:linear-gradient(135deg,#6366f1,#8b5cf6)">
+            <span class="material-icons-round" style="color:#fff">admin_panel_settings</span>
+          </div>
+          <div class="page-crumb"><h2>Platform Admin</h2></div>
+          <div class="topbar-right">
+            <div class="lang-switch">
+              {% for l in brand_languages %}
+                <a href="{% url 'web:set-language' l.code %}" class="{% if l.code == brand_lang %}active{% endif %}">{{ l.code|upper }}</a>
+              {% endfor %}
+            </div>
+            <a class="btn sm" href="{% url 'web:logout' %}"><span class="material-icons-round">logout</span>{% t 'menu.logout' %}</a>
+          </div>
+        </header>
+        <main class="page">
+    {% else %}
+      {% include 'web/partials/sidebar.html' %}
+      <div class="overlay"></div>
+      <div class="main">
+        {% include 'web/partials/topbar.html' %}
+        <main class="page">
+    {% endif %}
+        {% block content %}{% endblock %}
+        </main>
+      </div>
+  </div>
+
+  {% include 'web/partials/messages.html' %}
+
+  <script src="{% static 'js/translations.js' %}?v=3"></script>
+  <script src="{% static 'js/app.js' %}?v=3"></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

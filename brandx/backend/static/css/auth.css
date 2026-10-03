@@ -1,0 +1,77 @@
+/* Login page (ported from the Angular login component). */
+.login-page { min-height: 100vh; display: flex; background: var(--bg); }
+.login-left {
+  flex: 1; display: flex; align-items: center; justify-content: center;
+  background: linear-gradient(150deg, #0f172a 0%, #1e1b4b 50%, #2e1065 100%);
+  padding: 48px; color: #fff;
+}
+.brand-block { max-width: 420px; }
+.login-left .brand-logo {
+  width: 68px; height: 68px; border-radius: 18px; display: flex;
+  align-items: center; justify-content: center; margin-bottom: 26px;
+  background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.16);
+}
+.login-left .brand-logo .material-icons-round { font-size: 36px; color: #a5b4fc; }
+.login-left h1 { font-size: 34px; margin: 0 0 8px; letter-spacing: -.5px; }
+.tagline { color: rgba(255,255,255,.65); margin: 0 0 34px; font-size: 15px; }
+.feature-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 14px; }
+.feature-list li { display: flex; align-items: center; gap: 12px; color: rgba(255,255,255,.85); font-size: 14.5px; }
+.feature-list .material-icons-round { color: #818cf8; font-size: 20px; }
+
+.login-right {
+  width: 460px; flex-shrink: 0; background: var(--surface); display: flex;
+  align-items: center; justify-content: center; padding: 40px;
+  box-shadow: var(--shadow-lg);
+}
+.pad-wrap { width: 100%; max-width: 320px; text-align: center; }
+.lang-row { display: flex; justify-content: center; gap: 8px; margin-bottom: 26px; }
+.lang-btn {
+  border: 1px solid var(--border); background: var(--surface); border-radius: 8px;
+  padding: 6px 14px; font-size: 13px; cursor: pointer; color: var(--text-2);
+  font-family: inherit; text-decoration: none;
+}
+.lang-btn.active { background: var(--primary-soft); border-color: transparent; color: var(--primary); font-weight: 600; }
+.pad-title { font-size: 20px; color: var(--text); margin: 0 0 18px; }
+.pin-dots { display: flex; justify-content: center; gap: 12px; margin-bottom: 18px; min-height: 16px; }
+.pin-dots .pdot { width: 14px; height: 14px; border-radius: 50%; background: var(--surface-3); transition: background .15s; }
+.pin-dots .pdot.filled { background: var(--primary); }
+.auth-alert {
+  display: flex; align-items: center; gap: 8px; justify-content: center;
+  background: var(--danger-soft); color: var(--danger);
+  border-radius: 8px; padding: 9px 12px; font-size: 13px; margin-bottom: 14px;
+}
+.auth-alert .material-icons-round { font-size: 17px; }
+.keypad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.key {
+  height: 56px; border-radius: 12px; border: 1px solid var(--border); background: var(--surface-2);
+  font-size: 20px; font-weight: 600; color: var(--text); cursor: pointer;
+  font-family: inherit; transition: background .12s, transform .1s;
+  display: flex; align-items: center; justify-content: center;
+}
+.key:hover:not(:disabled) { background: var(--primary-soft); }
+.key:active:not(:disabled) { transform: scale(.97); }
+.key:disabled { opacity: .5; cursor: not-allowed; }
+.key.fn { background: var(--surface); }
+.key.ok { background: linear-gradient(135deg, #6366f1, #4f46e5); color: #fff; border: none; }
+.pw-form { display: grid; gap: 10px; margin-top: 18px; }
+.pw-input {
+  height: 42px; border: 1px solid var(--border); border-radius: 9px; padding: 0 12px;
+  font-size: 14px; font-family: inherit; outline: none;
+  background: var(--surface); color: var(--text);
+}
+.pw-input:focus { border-color: var(--primary); }
+.pw-submit {
+  height: 42px; border: none; border-radius: 9px; background: var(--primary); color: #fff;
+  font-size: 14px; font-weight: 600; cursor: pointer; font-family: inherit;
+}
+.link-btn {
+  margin-top: 18px; background: none; border: none; color: var(--primary);
+  font-size: 13px; cursor: pointer; font-family: inherit; text-decoration: underline;
+}
+.hint { margin-top: 14px; font-size: 12px; color: var(--text-3); }
+.login-store { text-align: center; margin-bottom: 12px; color: var(--text-2); font-weight: 600; }
+.login-platform-link { display: inline-block; margin-top: 10px; font-size: 12.5px; color: var(--text-3); }
+@media (max-width: 860px) {
+  .login-left { display: none; }
+  .login-right { width: 100%; padding: 28px 20px; }
+}

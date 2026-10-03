@@ -1,0 +1,84 @@
+{% load web_extras %}{% with u=brand_user %}
+<aside class="sidebar">
+  <div class="brand">
+    <div class="brand-logo"><span class="material-icons-round">checkroom</span></div>
+    <div class="brand-text">
+      <span class="brand-name">{{ u.store.name|default:BUSINESS_NAME }}</span>
+      <span class="brand-tag">POS</span>
+    </div>
+  </div>
+
+  <nav class="nav">
+    <div class="group-label">{% t 'group.main' %}</div>
+    <a class="nav-item {% active request 'web:dashboard' %}" href="{% url 'web:dashboard' %}">
+      <span class="material-icons-round nav-icon">dashboard</span>
+      <span class="nav-label" data-i18n="menu.dashboard">{% t 'menu.dashboard' %}</span>
+    </a>
+    <a class="nav-item {% active request 'web:pos' %}" href="{% url 'web:pos' %}">
+      <span class="material-icons-round nav-icon">point_of_sale</span>
+      <span class="nav-label" data-i18n="menu.pos">{% t 'menu.pos' %}</span>
+    </a>
+
+    {% if u.role == 'owner' or u.role == 'manager' %}
+    <div class="group-label">{% t 'group.catalog' %}</div>
+    <a class="nav-item {% active request 'web:product' %}" href="{% url 'web:product-list' %}">
+      <span class="material-icons-round nav-icon">inventory_2</span>
+      <span class="nav-label" data-i18n="menu.products">{% t 'menu.products' %}</span>
+    </a>
+    <a class="nav-item {% active request 'web:category' %}" href="{% url 'web:category-list' %}">
+      <span class="material-icons-round nav-icon">category</span>
+      <span class="nav-label" data-i18n="menu.categories">{% t 'menu.categories' %}</span>
+    </a>
+    {% endif %}
+
+    <div class="group-label">{% t 'group.operations' %}</div>
+    {% if u.role == 'owner' or u.role == 'manager' %}
+    <a class="nav-item {% active request 'web:stock' %}" href="{% url 'web:stock' %}">
+      <span class="material-icons-round nav-icon">warehouse</span>
+      <span class="nav-label" data-i18n="menu.stock">{% t 'menu.stock' %}</span>
+    </a>
+    <a class="nav-item {% active request 'web:receipt' %}" href="{% url 'web:receipts' %}">
+      <span class="material-icons-round nav-icon">move_to_inbox</span>
+      <span class="nav-label" data-i18n="menu.receipts">{% t 'menu.receipts' %}</span>
+    </a>
+    {% endif %}
+    <a class="nav-item {% active request 'web:sales' 'web:sale' %}" href="{% url 'web:sales-list' %}">
+      <span class="material-icons-round nav-icon">receipt_long</span>
+      <span class="nav-label" data-i18n="menu.sales">{% t 'menu.sales' %}</span>
+    </a>
+    {% if u.role == 'owner' or u.role == 'manager' %}
+    <a class="nav-item {% active request 'web:finance' %}" href="{% url 'web:finance' %}">
+      <span class="material-icons-round nav-icon">account_balance_wallet</span>
+      <span class="nav-label" data-i18n="menu.finance">{% t 'menu.finance' %}</span>
+    </a>
+    {% endif %}
+
+    {% if u.role == 'owner' or u.role == 'manager' %}
+    <div class="group-label">{% t 'group.analytics' %}</div>
+    <a class="nav-item {% active request 'web:reports' %}" href="{% url 'web:reports' %}">
+      <span class="material-icons-round nav-icon">bar_chart</span>
+      <span class="nav-label" data-i18n="menu.reports">{% t 'menu.reports' %}</span>
+    </a>
+    {% endif %}
+
+    <div class="group-label">{% t 'group.admin' %}</div>
+    {% if u.role == 'owner' %}
+    <a class="nav-item {% active request 'web:employee' %}" href="{% url 'web:employees' %}">
+      <span class="material-icons-round nav-icon">badge</span>
+      <span class="nav-label" data-i18n="menu.employees">{% t 'menu.employees' %}</span>
+    </a>
+    {% endif %}
+    <a class="nav-item {% active request 'web:settings' %}" href="{% url 'web:settings' %}">
+      <span class="material-icons-round nav-icon">settings</span>
+      <span class="nav-label" data-i18n="menu.settings">{% t 'menu.settings' %}</span>
+    </a>
+  </nav>
+
+  <div class="sidebar-footer">
+    <button class="collapse-btn" data-collapse type="button">
+      <span class="material-icons-round">chevron_left</span>
+      <span class="nav-label" data-i18n="menu.collapse">{% t 'menu.collapse' %}</span>
+    </button>
+  </div>
+</aside>
+{% endwith %}

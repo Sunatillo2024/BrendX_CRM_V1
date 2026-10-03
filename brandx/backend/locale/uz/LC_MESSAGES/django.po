@@ -1,0 +1,145 @@
+# BrandX — Uzbek (uz) translations for the Django admin.
+msgid ""
+msgstr ""
+"Project-Id-Version: BrandX\n"
+"Language: uz\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+# ── App sections ─────────────────────────────────────────────────────
+msgid "AI analysis"
+msgstr "AI tahlil"
+
+msgid "Audit Log"
+msgstr "Audit jurnali"
+
+msgid "Authentication"
+msgstr "Xodimlar va kirish"
+
+msgid "Customers"
+msgstr "Mijozlar"
+
+msgid "Income / Expenses"
+msgstr "Kirim / Chiqim"
+
+msgid "Inventory"
+msgstr "Ombor"
+
+msgid "Products"
+msgstr "Mahsulotlar"
+
+msgid "Reports & Exports"
+msgstr "Hisobotlar"
+
+msgid "Sales"
+msgstr "Sotuvlar"
+
+msgid "Vendors"
+msgstr "Yetkazib beruvchilar"
+
+# ── Models ───────────────────────────────────────────────────────────
+msgid "Audit log"
+msgstr "Audit yozuvi"
+
+msgid "Audit logs"
+msgstr "Audit yozuvlari"
+
+msgid "User"
+msgstr "Xodim"
+
+msgid "Users"
+msgstr "Xodimlar"
+
+msgid "PIN attempt"
+msgstr "PIN urinish"
+
+msgid "PIN attempts"
+msgstr "PIN urinishlar"
+
+msgid "Customer"
+msgstr "Mijoz"
+
+msgid "Income / Expense"
+msgstr "Kirim / Chiqim yozuvi"
+
+msgid "Stock receipt"
+msgstr "Kirim hujjati"
+
+msgid "Stock receipts"
+msgstr "Kirim hujjatlari"
+
+msgid "Stock receipt item"
+msgstr "Kirim qatori"
+
+msgid "Stock receipt items"
+msgstr "Kirim qatorlari"
+
+msgid "Stock movement"
+msgstr "Ombor harakati"
+
+msgid "Stock movements"
+msgstr "Ombor harakatlari"
+
+msgid "Category"
+msgstr "Kategoriya"
+
+msgid "Categories"
+msgstr "Kategoriyalar"
+
+msgid "Color"
+msgstr "Rang"
+
+msgid "Colors"
+msgstr "Ranglar"
+
+msgid "Size"
+msgstr "O'lcham"
+
+msgid "Sizes"
+msgstr "O'lchamlar"
+
+msgid "Product"
+msgstr "Mahsulot"
+
+msgid "Product variant"
+msgstr "Variant"
+
+msgid "Product variants"
+msgstr "Variantlar"
+
+msgid "Sale"
+msgstr "Sotuv"
+
+msgid "Sale item"
+msgstr "Sotuv qatori"
+
+msgid "Sale items"
+msgstr "Sotuv qatorlari"
+
+msgid "Receipt"
+msgstr "Chek"
+
+msgid "Receipts"
+msgstr "Cheklar"
+
+msgid "Sale return"
+msgstr "Qaytarish"
+
+msgid "Sale returns"
+msgstr "Qaytarishlar"
+
+msgid "Sale return item"
+msgstr "Qaytarish qatori"
+
+msgid "Sale return items"
+msgstr "Qaytarish qatorlari"
+
+msgid "Vendor"
+msgstr "Yetkazib beruvchi"
+
+msgid "Vendor transaction"
+msgstr "Yetkazib beruvchi amali"
+
+msgid "Vendor transactions"
+msgstr "Yetkazib beruvchi amallari"

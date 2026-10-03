@@ -1,0 +1,85 @@
+{% extends 'web/base.html' %}
+{% load static web_extras %}
+{% block title %}Platform Admin · {{ BUSINESS_NAME }}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div class="page-title">Platform Admin</div>
+  <a class="btn" href="{% url 'web:logout' %}"><span class="material-icons-round">logout</span>{% t 'menu.logout' %}</a>
+</div>
+
+<div class="page-body">
+  <div class="grid grid-4">
+    <div class="stat"><div class="stat-label">Do'konlar</div><div class="stat-value">{{ stats.total_stores }}</div></div>
+    <div class="stat"><div class="stat-label">Faol</div><div class="stat-value positive">{{ stats.active_stores }}</div></div>
+    <div class="stat"><div class="stat-label">Nofaol</div><div class="stat-value negative">{{ stats.inactive_stores }}</div></div>
+    <div class="stat"><div class="stat-label">Sotuvlar</div><div class="stat-value">{{ stats.total_sales }}</div></div>
+  </div>
+
+  <div class="card mt-16">
+    <div class="section-head">
+      <div class="section-title"><span class="material-icons-round">store</span>Do'konlar</div>
+      <button class="btn primary sm" type="button" data-open-store><span class="material-icons-round">add</span>Yangi do'kon</button>
+    </div>
+    {% if stores %}
+      <div class="table-wrap">
+        <table class="data">
+          <thead><tr><th>Nomi</th><th>Kod</th><th>Holati</th><th class="actions"></th></tr></thead>
+          <tbody>
+            {% for s in stores %}
+              <tr>
+                <td class="strong">{{ s.name }}</td>
+                <td class="muted">{{ s.code }}</td>
+                <td>{% if s.is_active %}<span class="badge success">Faol</span>{% else %}<span class="badge">Nofaol</span>{% endif %}</td>
+                <td class="actions"><a class="btn sm" href="{% url 'web:platform-store-detail' s.pk %}">{% t 'common.open' %}</a></td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}<div class="empty">Do'konlar yo'q</div>{% endif %}
+  </div>
+
+  <div class="card mt-16">
+    <div class="card-title">Umumiy</div>
+    <div class="grid grid-3">
+      <div><div class="stat-label">Xodimlar</div><div class="strong">{{ stats.total_users }}</div></div>
+      <div><div class="stat-label">Egalar</div><div class="strong">{{ stats.total_owners }}</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="store-modal" hidden>
+  <div class="modal">
+    <form method="post" action="{% url 'web:platform-store-create' %}">
+      {% csrf_token %}
+      <div class="modal-head"><h3>Yangi do'kon</h3></div>
+      <div class="modal-body">
+        <div class="form-grid">
+          <div class="field"><label class="field-label">Nomi</label><input class="input" name="name" required></div>
+          <div class="field"><label class="field-label">Kod</label><input class="input" name="code" required></div>
+          <div class="field"><label class="field-label">Egasi ismi</label><input class="input" name="owner_name" required></div>
+          <div class="field"><label class="field-label">Egasi PIN</label><input class="input" name="owner_pin" inputmode="numeric" required></div>
+          <div class="field"><label class="field-label">Til</label>
+            <select class="select" name="owner_language"><option value="ru">Русский</option><option value="uz">O'zbekcha</option></select></div>
+          <div class="field"><label class="field-label">Telefon</label><input class="input" name="phone"></div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn" type="button" data-close-store>{% t 'common.cancel' %}</button>
+        <button class="btn primary" type="submit">{% t 'common.save' %}</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  (function () {
+    var modal = document.getElementById('store-modal');
+    document.querySelector('[data-open-store]').addEventListener('click', function () { modal.hidden = false; });
+    modal.querySelector('[data-close-store]').addEventListener('click', function () { modal.hidden = true; });
+  })();
+</script>
+{% endblock %}

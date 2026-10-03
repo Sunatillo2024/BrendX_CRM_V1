@@ -1,0 +1,114 @@
+{% extends 'web/base.html' %}
+{% load static web_extras %}
+{% block title %}{% t 'finance.title' %} · {{ BUSINESS_NAME }}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div class="page-title">{% t 'finance.title' %}</div>
+  <button class="btn primary" type="button" data-open-entry>
+    <span class="material-icons-round">add</span>{% t 'finance.new' %}
+  </button>
+</div>
+
+<div class="page-body">
+  <div class="grid grid-3">
+    <div class="stat"><div class="stat-row"><span class="stat-label">{% t 'finance.totalIncome' %}</span>
+      <div class="stat-icon success"><span class="material-icons-round">south_west</span></div></div>
+      <div class="stat-value positive">{{ totals.income|money }}</div></div>
+    <div class="stat"><div class="stat-row"><span class="stat-label">{% t 'finance.totalExpense' %}</span>
+      <div class="stat-icon danger"><span class="material-icons-round">north_east</span></div></div>
+      <div class="stat-value negative">{{ totals.expense|money }}</div></div>
+    <div class="stat"><div class="stat-row"><span class="stat-label">{% t 'finance.balance' %}</span>
+      <div class="stat-icon"><span class="material-icons-round">account_balance</span></div></div>
+      <div class="stat-value">{{ totals.balance|money }}</div></div>
+  </div>
+
+  <div class="card mt-16">
+    <form class="toolbar" method="get">
+      <select class="select" name="entry_type" style="max-width:200px">
+        <option value="">{% t 'common.all' %}</option>
+        <option value="income" {% if entry_type == 'income' %}selected{% endif %}>{% t 'finance.income' %}</option>
+        <option value="expense" {% if entry_type == 'expense' %}selected{% endif %}>{% t 'finance.expense' %}</option>
+      </select>
+      <div class="period-bar">
+        <a class="period-btn {% if period == 'today' %}active{% endif %}" href="?period=today">{% t 'common.today' %}</a>
+        <a class="period-btn {% if period == 'month' %}active{% endif %}" href="?period=month">{% t 'common.month' %}</a>
+      </div>
+      <button class="btn" type="submit">{% t 'common.search' %}</button>
+    </form>
+  </div>
+
+  <div class="card pad-0 mt-16">
+    {% if page_obj.object_list %}
+      <div class="table-wrap">
+        <table class="data">
+          <thead><tr>
+            <th>{% t 'common.date' %}</th><th>{% t 'finance.type' %}</th>
+            <th>{% t 'common.category' %}</th><th>{% t 'finance.comment' %}</th>
+            <th class="num">{% t 'finance.amount' %}</th>
+            {% if brand_user.role == 'owner' %}<th class="actions"></th>{% endif %}
+          </tr></thead>
+          <tbody>
+            {% for e in page_obj %}
+              <tr>
+                <td class="muted">{{ e.entry_date|date:'d.m.Y' }}</td>
+                <td>{% if e.entry_type == 'income' %}<span class="badge success">{% t 'finance.income' %}</span>
+                  {% else %}<span class="badge danger">{% t 'finance.expense' %}</span>{% endif %}</td>
+                <td>{{ e.category|default:'—' }}</td>
+                <td class="muted">{{ e.comment|default:'—' }}</td>
+                <td class="num strong">{{ e.amount|money }}</td>
+                {% if brand_user.role == 'owner' %}
+                  <td class="actions"><form method="post" action="{% url 'web:finance-delete' e.pk %}">{% csrf_token %}
+                    <button class="btn sm danger" type="button" data-confirm="{% t 'finance.deleteTitle' %}">{% t 'common.delete' %}</button>
+                  </form></td>
+                {% endif %}
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="empty-state"><span class="material-icons-round">account_balance_wallet</span>
+        <h4>{% t 'finance.emptyTitle' %}</h4><p>{% t 'finance.emptyHint' %}</p></div>
+    {% endif %}
+  </div>
+
+  {% include 'web/partials/pagination.html' %}
+</div>
+
+<div class="modal-backdrop" id="entry-modal" hidden>
+  <div class="modal">
+    <form method="post" action="{% url 'web:finance-save' %}">
+      {% csrf_token %}
+      <div class="modal-head"><h3>{% t 'finance.new' %}</h3>
+        <button class="icon-btn" type="button" data-close-entry><span class="material-icons-round">close</span></button></div>
+      <div class="modal-body">
+        <div class="form-grid">
+          <div class="field"><label class="field-label">{% t 'finance.type' %}</label>{{ form.entry_type }}</div>
+          <div class="field"><label class="field-label">{% t 'finance.amount' %}</label>{{ form.amount }}</div>
+          <div class="field"><label class="field-label">{% t 'common.category' %}</label>{{ form.category }}</div>
+          <div class="field"><label class="field-label">{% t 'finance.entryDate' %}</label>{{ form.entry_date }}</div>
+        </div>
+        <div class="field mt-12"><label class="field-label">{% t 'finance.comment' %}</label>{{ form.comment }}</div>
+        <p class="field-hint mt-8">{% t 'finance.hint' %}</p>
+      </div>
+      <div class="modal-foot">
+        <button class="btn" type="button" data-close-entry>{% t 'common.cancel' %}</button>
+        <button class="btn primary" type="submit">{% t 'common.save' %}</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  (function () {
+    var modal = document.getElementById('entry-modal');
+    document.querySelector('[data-open-entry]').addEventListener('click', function () { modal.hidden = false; });
+    modal.querySelectorAll('[data-close-entry]').forEach(function (b) {
+      b.addEventListener('click', function () { modal.hidden = true; });
+    });
+  })();
+</script>
+{% endblock %}

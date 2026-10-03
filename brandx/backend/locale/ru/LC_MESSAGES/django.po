@@ -1,0 +1,145 @@
+# BrandX — Russian (ru) translations for the Django admin.
+msgid ""
+msgstr ""
+"Project-Id-Version: BrandX\n"
+"Language: ru\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+# ── App sections ─────────────────────────────────────────────────────
+msgid "AI analysis"
+msgstr "AI-анализ"
+
+msgid "Audit Log"
+msgstr "Журнал аудита"
+
+msgid "Authentication"
+msgstr "Сотрудники и доступ"
+
+msgid "Customers"
+msgstr "Клиенты"
+
+msgid "Income / Expenses"
+msgstr "Доходы / расходы"
+
+msgid "Inventory"
+msgstr "Склад"
+
+msgid "Products"
+msgstr "Товары"
+
+msgid "Reports & Exports"
+msgstr "Отчёты"
+
+msgid "Sales"
+msgstr "Продажи"
+
+msgid "Vendors"
+msgstr "Поставщики"
+
+# ── Models ───────────────────────────────────────────────────────────
+msgid "Audit log"
+msgstr "Запись аудита"
+
+msgid "Audit logs"
+msgstr "Записи аудита"
+
+msgid "User"
+msgstr "Сотрудник"
+
+msgid "Users"
+msgstr "Сотрудники"
+
+msgid "PIN attempt"
+msgstr "Попытка ввода PIN"
+
+msgid "PIN attempts"
+msgstr "Попытки ввода PIN"
+
+msgid "Customer"
+msgstr "Клиент"
+
+msgid "Income / Expense"
+msgstr "Доход / расход"
+
+msgid "Stock receipt"
+msgstr "Поступление"
+
+msgid "Stock receipts"
+msgstr "Поступления"
+
+msgid "Stock receipt item"
+msgstr "Строка поступления"
+
+msgid "Stock receipt items"
+msgstr "Строки поступления"
+
+msgid "Stock movement"
+msgstr "Движение склада"
+
+msgid "Stock movements"
+msgstr "Движения склада"
+
+msgid "Category"
+msgstr "Категория"
+
+msgid "Categories"
+msgstr "Категории"
+
+msgid "Color"
+msgstr "Цвет"
+
+msgid "Colors"
+msgstr "Цвета"
+
+msgid "Size"
+msgstr "Размер"
+
+msgid "Sizes"
+msgstr "Размеры"
+
+msgid "Product"
+msgstr "Товар"
+
+msgid "Product variant"
+msgstr "Вариант"
+
+msgid "Product variants"
+msgstr "Варианты"
+
+msgid "Sale"
+msgstr "Продажа"
+
+msgid "Sale item"
+msgstr "Позиция продажи"
+
+msgid "Sale items"
+msgstr "Позиции продажи"
+
+msgid "Receipt"
+msgstr "Чек"
+
+msgid "Receipts"
+msgstr "Чеки"
+
+msgid "Sale return"
+msgstr "Возврат"
+
+msgid "Sale returns"
+msgstr "Возвраты"
+
+msgid "Sale return item"
+msgstr "Позиция возврата"
+
+msgid "Sale return items"
+msgstr "Позиции возврата"
+
+msgid "Vendor"
+msgstr "Поставщик"
+
+msgid "Vendor transaction"
+msgstr "Операция поставщика"
+
+msgid "Vendor transactions"
+msgstr "Операции поставщиков"

@@ -1,0 +1,15 @@
+{% if page_obj.has_other_pages %}
+<div class="pagination">
+  {% if page_obj.has_previous %}
+    <a class="btn sm" href="?page={{ page_obj.previous_page_number }}{% if query_string %}&{{ query_string }}{% endif %}">
+      <span class="material-icons-round">chevron_left</span>
+    </a>
+  {% endif %}
+  <span class="page-info">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span>
+  {% if page_obj.has_next %}
+    <a class="btn sm" href="?page={{ page_obj.next_page_number }}{% if query_string %}&{{ query_string }}{% endif %}">
+      <span class="material-icons-round">chevron_right</span>
+    </a>
+  {% endif %}
+</div>
+{% endif %}

@@ -1,0 +1,69 @@
+{% load web_extras %}{% with u=brand_user %}
+<header class="topbar">
+  <button class="icon-btn hamburger" data-collapse type="button" aria-label="Menu">
+    <span class="material-icons-round">menu</span>
+  </button>
+
+  <div class="page-crumb">
+    <h2>{{ page_title }}</h2>
+  </div>
+
+  <form class="global-search" method="get" action="{% url 'web:product-list' %}">
+    <span class="material-icons-round">search</span>
+    <input type="search" name="q" value="{{ request.GET.q }}"
+           placeholder="{% t 'common.search' %}" data-i18n-placeholder="common.search">
+  </form>
+
+  <div class="topbar-right">
+    <button class="icon-btn" data-theme-toggle type="button" title="{% t 'menu.theme' %}">
+      <span class="material-icons-round" data-theme-icon>dark_mode</span>
+    </button>
+
+    <div class="lang-switch">
+      {% for l in brand_languages %}
+        <a href="{% url 'web:set-language' l.code %}"
+           class="{% if l.code == brand_lang %}active{% endif %}">{{ l.code|upper }}</a>
+      {% endfor %}
+    </div>
+
+    <div class="popover-host">
+      <button class="profile-btn" data-profile-toggle type="button">
+        <div class="avatar">{{ u.display_name|slice:':1'|upper }}</div>
+        <div class="profile-meta">
+          <span class="profile-name">{{ u.display_name }}</span>
+          <span class="profile-role">{% tenum 'role' u.role %}</span>
+        </div>
+        <span class="material-icons-round chev">expand_more</span>
+      </button>
+
+      <div class="menu profile-menu" data-profile-menu hidden>
+        <div class="profile-menu-head">
+          <div class="avatar">{{ u.display_name|slice:':1'|upper }}</div>
+          <div>
+            <div class="strong">{{ u.display_name }}</div>
+            <div class="small muted">{% tenum 'role' u.role %}</div>
+          </div>
+        </div>
+        <div class="menu-sep"></div>
+        <a class="menu-item" href="{% url 'web:settings' %}">
+          <span class="material-icons-round">settings</span> {% t 'menu.settings' %}
+        </a>
+        <div class="menu-sep"></div>
+        <div class="theme-row">
+          <span class="material-icons-round">contrast</span>
+          <span class="small muted">{% t 'menu.theme' %}</span>
+        </div>
+        <div class="theme-opts">
+          <button class="period-btn" data-theme-opt="light" type="button">{% t 'menu.theme.light' %}</button>
+          <button class="period-btn" data-theme-opt="dark" type="button">{% t 'menu.theme.dark' %}</button>
+          <button class="period-btn" data-theme-opt="system" type="button">{% t 'menu.theme.system' %}</button>
+        </div>
+        <div class="menu-sep"></div>
+        <a class="menu-item danger" href="{% url 'web:logout' %}">
+          <span class="material-icons-round">logout</span> {% t 'menu.logout' %}
+        </a>
+      </div>
+    </div>
+  </div>
+</header>
+{% endwith %}

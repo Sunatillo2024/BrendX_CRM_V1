@@ -1,0 +1,122 @@
+{% load static web_extras %}<!doctype html>
+<html lang="{{ brand_lang }}">
+<head>
+  <meta charset="utf-8">
+  <title>{{ BUSINESS_NAME }}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- Fonts are self-hosted (static/fonts) - no external CDN round-trip. -->
+  <link rel="preload" href="{% static 'fonts/icons-LDItaoyNOAY6Uewc665JcIzCKsKc_M9flwmPq_HTTw.woff2' %}" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="{% static 'css/fonts.css' %}?v=4">
+  <link rel="stylesheet" href="{% static 'css/brandx.css' %}?v=4">
+  <link rel="stylesheet" href="{% static 'css/auth.css' %}?v=4">
+</head>
+<body>
+  <div class="login-page">
+    <div class="login-left">
+      <div class="brand-block">
+        <div class="brand-logo"><span class="material-icons-round">checkroom</span></div>
+        <h1>{{ BUSINESS_NAME }}</h1>
+        <p class="tagline">{% t 'auth.tagline' %}</p>
+        <ul class="feature-list">
+          <li><span class="material-icons-round">point_of_sale</span> {% t 'auth.feature1' %}</li>
+          <li><span class="material-icons-round">warehouse</span> {% t 'auth.feature2' %}</li>
+          <li><span class="material-icons-round">trending_up</span> {% t 'auth.feature3' %}</li>
+          <li><span class="material-icons-round">print</span> {% t 'auth.feature4' %}</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="login-right">
+      <div class="pad-wrap">
+        <div class="lang-row">
+          {% for l in brand_languages %}
+            <a class="lang-btn {% if l.code == brand_lang %}active{% endif %}"
+               href="?lang={{ l.code }}">{{ l.label }}</a>
+          {% endfor %}
+        </div>
+
+        {% if store_code and not platform %}
+          <div class="login-store">{{ store_code }}</div>
+        {% endif %}
+
+        {% if not platform and not store_code %}
+          <form method="post" id="store-form">
+            {% csrf_token %}
+            <input class="pw-input" name="store_code" placeholder="Do‘kon kodi / Код магазина" required>
+            <button class="btn block mt-12" type="submit">{% t 'auth.signIn' %}</button>
+          </form>
+          <a class="login-platform-link" href="{% url 'web:platform-login' %}">Platform Admin</a>
+        {% else %}
+          <h2 class="pad-title">{% t 'auth.enterPin' %}</h2>
+
+          <form method="post" id="pin-form">
+            {% csrf_token %}
+            <input type="hidden" name="pin" id="pin-input">
+            <input type="hidden" name="store_code" value="{{ store_code }}">
+          </form>
+
+          {% if error %}
+            <div class="auth-alert">
+              <span class="material-icons-round">error_outline</span>
+              <span>{{ error }}
+                {% if attempts_left is not None %}<b>({% t 'auth.attemptsLeft' %}: {{ attempts_left }})</b>{% endif %}
+              </span>
+            </div>
+          {% endif %}
+
+          <div class="pin-dots" id="pin-dots"></div>
+
+          <div class="keypad" id="keypad">
+            {% for key in "123456789" %}<button class="key" type="button" data-key="{{ key }}">{{ key }}</button>{% endfor %}
+            <button class="key fn" type="button" data-backspace><span class="material-icons-round">backspace</span></button>
+            <button class="key" type="button" data-key="0">0</button>
+            <button class="key ok" type="button" data-submit><span class="material-icons-round">login</span></button>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  {% if store_code or platform %}
+  <script>
+    (function () {
+      var input = document.getElementById('pin-input');
+      var dots = document.getElementById('pin-dots');
+      var form = document.getElementById('pin-form');
+      var maxLen = 8;
+
+      function render() {
+        dots.innerHTML = '';
+        var count = Math.max(4, input.value.length);
+        for (var i = 0; i < count; i++) {
+          var d = document.createElement('span');
+          d.className = 'pdot' + (i < input.value.length ? ' filled' : '');
+          dots.appendChild(d);
+        }
+      }
+      function press(digit) {
+        if (input.value.length >= maxLen) return;
+        input.value += digit;
+        render();
+      }
+      function clear() { input.value = input.value.slice(0, -1); render(); }
+      function submit() { if (input.value.length >= 4) form.submit(); }
+
+      document.addEventListener('click', function (e) {
+        var key = e.target.closest('[data-key]');
+        if (key) { press(key.getAttribute('data-key')); return; }
+        if (e.target.closest('[data-backspace]')) { clear(); return; }
+        if (e.target.closest('[data-submit]')) { submit(); }
+      });
+      document.addEventListener('keydown', function (e) {
+        if (e.target instanceof HTMLInputElement) return;
+        if (/^[0-9]$/.test(e.key)) press(e.key);
+        else if (e.key === 'Backspace') clear();
+        else if (e.key === 'Enter') submit();
+      });
+      render();
+    })();
+  </script>
+  {% endif %}
+</body>
+</html>

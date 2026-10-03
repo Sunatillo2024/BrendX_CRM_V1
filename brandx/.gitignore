@@ -1,0 +1,11 @@
+.env
+.env.prod
+deploy/.env.prod
+*.log
+*.transfer.json
+*.transfer.json.*
+backend/media/
+backend/staticfiles/
+backups/
+__pycache__/
+*.pyc

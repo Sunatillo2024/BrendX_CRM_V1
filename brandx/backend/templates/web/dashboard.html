@@ -1,0 +1,171 @@
+{% extends 'web/base.html' %}
+{% load static web_extras %}
+{% block title %}{% t 'dashboard.title' %} · {{ BUSINESS_NAME }}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <div class="page-title">{% t 'dashboard.title' %}</div>
+    {% if not is_cashier %}<div class="page-sub">{% t 'common.period' %}: {{ date_from }} — {{ date_to }}</div>{% endif %}
+  </div>
+  <div class="period-bar">
+    <a class="period-btn {% if period == 'today' %}active{% endif %}" href="?period=today">{% t 'common.today' %}</a>
+    <a class="period-btn {% if period == 'yesterday' %}active{% endif %}" href="?period=yesterday">{% t 'common.yesterday' %}</a>
+    <a class="period-btn {% if period == 'week' %}active{% endif %}" href="?period=week">{% t 'common.week' %}</a>
+    <a class="period-btn {% if period == 'month' %}active{% endif %}" href="?period=month">{% t 'common.month' %}</a>
+    <a class="period-btn {% if period == 'days30' %}active{% endif %}" href="?period=days30">{% t 'common.days30' %}</a>
+  </div>
+</div>
+
+<div class="page-body">
+  {% if is_cashier %}
+    <div class="grid grid-3">
+      <div class="stat">
+        <div class="stat-row"><span class="stat-label">{% t 'dashboard.mySales' %}</span>
+          <div class="stat-icon"><span class="material-icons-round">receipt_long</span></div></div>
+        <div class="stat-value">{{ my_sales.sales_count }}</div>
+      </div>
+      <div class="stat">
+        <div class="stat-row"><span class="stat-label">{% t 'dashboard.myRevenue' %}</span>
+          <div class="stat-icon success"><span class="material-icons-round">payments</span></div></div>
+        <div class="stat-value accent">{{ my_sales.revenue|money }} {{ CURRENCY_SYMBOL }}</div>
+      </div>
+    </div>
+  {% else %}
+    <div class="grid grid-4">
+      <div class="stat">
+        <div class="stat-row"><span class="stat-label">{% t 'dashboard.revenue' %}</span>
+          <div class="stat-icon success"><span class="material-icons-round">payments</span></div></div>
+        <div class="stat-value accent">{{ operational.revenue|money }} {{ CURRENCY_SYMBOL }}</div>
+        <div class="stat-sub">{% t 'dashboard.returns' %}: {{ operational.returns_total|money }}</div>
+      </div>
+      <div class="stat">
+        <div class="stat-row"><span class="stat-label">{% t 'dashboard.salesCount' %}</span>
+          <div class="stat-icon"><span class="material-icons-round">shopping_bag</span></div></div>
+        <div class="stat-value">{{ operational.sales_count }}</div>
+      </div>
+      <div class="stat">
+        <div class="stat-row"><span class="stat-label">{% t 'dashboard.unitsSold' %}</span>
+          <div class="stat-icon info"><span class="material-icons-round">inventory</span></div></div>
+        <div class="stat-value">{{ operational.units_sold }}</div>
+      </div>
+      <div class="stat">
+        <div class="stat-row"><span class="stat-label">{% t 'dashboard.averageCheck' %}</span>
+          <div class="stat-icon warn"><span class="material-icons-round">trending_up</span></div></div>
+        <div class="stat-value">{{ operational.average_check|money }} {{ CURRENCY_SYMBOL }}</div>
+      </div>
+    </div>
+
+    <div class="grid grid-2 mt-16">
+      <div class="stat">
+        <div class="stat-row"><span class="stat-label">{% t 'dashboard.cash' %}</span>
+          <div class="stat-icon success"><span class="material-icons-round">paid</span></div></div>
+        <div class="stat-value">{{ operational.cash_total|money }} {{ CURRENCY_SYMBOL }}</div>
+      </div>
+      <div class="stat">
+        <div class="stat-row"><span class="stat-label">{% t 'dashboard.card' %}</span>
+          <div class="stat-icon info"><span class="material-icons-round">credit_card</span></div></div>
+        <div class="stat-value">{{ operational.card_total|money }} {{ CURRENCY_SYMBOL }}</div>
+      </div>
+    </div>
+
+    {% if can_view_financials and financial %}
+    <div class="card mt-16">
+      <div class="section-head"><div class="section-title">
+        <span class="material-icons-round">account_balance</span>{% t 'profit.title' %}</div></div>
+      <div class="grid grid-4">
+        <div><div class="stat-label">{% t 'profit.cost' %}</div><div class="stat-value">{{ financial.cost_of_goods|money }}</div></div>
+        <div><div class="stat-label">{% t 'profit.grossProfit' %}</div><div class="stat-value">{{ financial.gross_profit|money }}</div></div>
+        <div><div class="stat-label">{% t 'profit.expenses' %}</div><div class="stat-value negative">{{ financial.expenses|money }}</div></div>
+        <div><div class="stat-label">{% t 'profit.netProfit' %}</div>
+          <div class="stat-value {% if financial.net_profit >= 0 %}positive{% else %}negative{% endif %}">{{ financial.net_profit|money }}</div></div>
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="grid grid-2 mt-16">
+      <div class="card">
+        <div class="card-title">{% t 'dashboard.chart' %}</div>
+        {% if chart %}
+          <div class="bars">
+            {% for point in chart %}
+              <div class="bar-col">
+                <div class="bar-track"><div class="bar" style="height: {{ point.height }}%"></div></div>
+                <div class="bar-label">{{ point.label }}</div>
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}<div class="empty">{% t 'dashboard.noSales' %}</div>{% endif %}
+      </div>
+
+      <div class="card">
+        <div class="card-title">{% t 'dashboard.topProducts' %}</div>
+        {% if top_products %}
+          <table class="data">
+            <thead><tr><th>{% t 'common.product' %}</th><th class="num">{% t 'common.quantity' %}</th><th class="num">{% t 'common.sum' %}</th></tr></thead>
+            <tbody>
+              {% for row in top_products %}
+                <tr><td class="strong">{{ row.product_name }}</td><td class="num">{{ row.units }}</td>
+                  <td class="num">{{ row.revenue|money }}</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        {% else %}<div class="empty">{% t 'dashboard.noSales' %}</div>{% endif %}
+      </div>
+    </div>
+
+    <div class="grid grid-2 mt-16">
+      <div class="card">
+        <div class="card-title">{% t 'dashboard.recentSales' %}</div>
+        {% if recent_sales %}
+          <table class="data">
+            <thead><tr><th>{% t 'sales.number' %}</th><th>{% t 'common.time' %}</th><th class="num">{% t 'common.sum' %}</th></tr></thead>
+            <tbody>
+              {% for sale in recent_sales %}
+                <tr>
+                  <td><a class="strong" href="{% url 'web:sale-detail' sale.pk %}">{{ sale.sale_number }}</a></td>
+                  <td class="muted">{{ sale.created_at|date:'d.m H:i' }}</td>
+                  <td class="num strong">{{ sale.total_amount|money }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        {% else %}<div class="empty">{% t 'dashboard.noSales' %}</div>{% endif %}
+      </div>
+
+      <div class="card">
+        <div class="card-title">{% t 'dashboard.lowStock' %}</div>
+        {% if low_stock %}
+          <table class="data">
+            <thead><tr><th>{% t 'common.product' %}</th><th class="num">{% t 'products.stock' %}</th></tr></thead>
+            <tbody>
+              {% for v in low_stock %}
+                <tr><td>{{ v.product.name }}{% if v.color %} · {{ v.color.name }}{% endif %}{% if v.size %} · {{ v.size.name }}{% endif %}</td>
+                  <td class="num"><span class="badge {% if v.is_out_of_stock %}danger{% else %}warn{% endif %}">{{ v.stock_quantity }}</span></td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        {% else %}<div class="empty">{% t 'dashboard.noLowStock' %}</div>{% endif %}
+      </div>
+    </div>
+
+    {% if can_view_financials %}
+    <div class="card mt-16">
+      <div class="card-title">{% t 'dashboard.recentExpenses' %}</div>
+      {% if recent_expenses %}
+        <table class="data">
+          <thead><tr><th>{% t 'common.date' %}</th><th>{% t 'finance.comment' %}</th><th class="num">{% t 'common.sum' %}</th></tr></thead>
+          <tbody>
+            {% for e in recent_expenses %}
+              <tr><td class="muted">{{ e.entry_date|date:'d.m.Y' }}</td>
+                <td>{{ e.category }}{% if e.comment %} — {{ e.comment }}{% endif %}</td>
+                <td class="num negative">{{ e.amount|money }}</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% else %}<div class="empty">{% t 'dashboard.noExpenses' %}</div>{% endif %}
+    </div>
+    {% endif %}
+  {% endif %}
+</div>
+{% endblock %}

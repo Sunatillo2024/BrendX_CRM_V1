@@ -1,0 +1,53 @@
+# ===========================================================================
+# BrandX - isolated test stack.
+#
+# * Ephemeral PostgreSQL on tmpfs (no volume, data is discarded on exit).
+# * Builds the PRODUCTION backend image, so tests and deploys use the same code.
+# * Never touches the production volumes or the running stack.
+#
+# Usage: ./deploy/scripts/test.sh   (preferred)
+# ===========================================================================
+name: brandx-test
+
+services:
+  postgres-test:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: brandx_test
+      POSTGRES_USER: test_runner
+      POSTGRES_PASSWORD: disposable-test-only
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U test_runner -d brandx_test"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  tests:
+    image: brandx-backend:test
+    build:
+      context: ../backend
+      dockerfile: Dockerfile.prod
+    # Override the production entrypoint: run manage.py commands directly.
+    entrypoint: ["python", "manage.py"]
+    command: ["test", "apps", "--noinput", "--verbosity=1"]
+    depends_on:
+      postgres-test:
+        condition: service_healthy
+    environment:
+      DB_ENGINE: django.db.backends.postgresql
+      DB_NAME: brandx_test
+      DB_USER: test_runner
+      DB_PASSWORD: disposable-test-only
+      DB_HOST: postgres-test
+      DB_PORT: "5432"
+      SECRET_KEY: isolated-tests-only-not-a-production-key
+      DEBUG: "false"
+      ALLOWED_HOSTS: localhost,127.0.0.1
+
+# Explicit, isolated network name (never shared with the running stack).
+networks:
+  default:
+    name: brandx_test_network
+    driver: bridge

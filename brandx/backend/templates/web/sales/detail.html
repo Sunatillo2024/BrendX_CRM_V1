@@ -1,0 +1,110 @@
+{% extends 'web/base.html' %}
+{% load static web_extras %}
+{% block title %}{% t 'sales.detail' %} · {{ BUSINESS_NAME }}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div class="page-title">{% t 'sales.detail' %} — {{ sale.sale_number }}</div>
+  <div class="toolbar">
+    <a class="btn" href="{% url 'web:receipt-pdf' sale.pk %}" target="_blank">
+      <span class="material-icons-round">print</span>{% t 'common.print' %}
+    </a>
+    <a class="btn" href="{% url 'web:sales-list' %}"><span class="material-icons-round">arrow_back</span>{% t 'common.back' %}</a>
+  </div>
+</div>
+
+<div class="page-body">
+  <div class="card">
+    <div class="grid grid-4">
+      <div><div class="stat-label">{% t 'common.date' %}</div><div class="strong">{{ sale.created_at|date:'d.m.Y H:i' }}</div></div>
+      <div><div class="stat-label">{% t 'sales.cashier' %}</div><div class="strong">{{ sale.cashier.display_name }}</div></div>
+      <div><div class="stat-label">{% t 'sales.paymentMethod' %}</div><div class="strong">{% tenum 'payment' sale.payment_method %}</div></div>
+      <div><div class="stat-label">{% t 'common.status' %}</div>
+        <span class="badge {% if sale.status == 'completed' %}success{% elif sale.status == 'cancelled' %}danger{% else %}warn{% endif %}">
+          {% tenum 'sales.status' sale.status %}</span></div>
+    </div>
+  </div>
+
+  <div class="card pad-0 mt-16">
+    <div class="table-wrap">
+      <table class="data">
+        <thead><tr>
+          <th>{% t 'common.product' %}</th><th>{% t 'common.color' %}</th><th>{% t 'common.size' %}</th>
+          <th class="num">{% t 'common.quantity' %}</th><th class="num">{% t 'common.price' %}</th>
+          <th class="num">{% t 'common.sum' %}</th>{% if can_return %}<th class="num">{% t 'sales.returnedQty' %}</th>{% endif %}
+        </tr></thead>
+        <tbody>
+          {% for item in sale.items.all %}
+            <tr>
+              <td class="strong">{{ item.product_name }}</td>
+              <td>{{ item.color_name|default:'—' }}</td>
+              <td>{{ item.size_name|default:'—' }}</td>
+              <td class="num">{{ item.quantity }}</td>
+              <td class="num">{{ item.unit_price|money }}</td>
+              <td class="num strong">{{ item.total_price|money }}</td>
+              {% if can_return %}<td class="num">{{ item.returned_quantity }}</td>{% endif %}
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="grid grid-3 mt-16">
+    <div class="stat"><div class="stat-label">{% t 'pos.subtotal' %}</div><div class="stat-value">{{ sale.subtotal|money }}</div></div>
+    <div class="stat"><div class="stat-label">{% t 'pos.discount' %}</div><div class="stat-value">{{ sale.discount_amount|money }}</div></div>
+    <div class="stat"><div class="stat-label">{% t 'common.total' %}</div><div class="stat-value accent">{{ sale.total_amount|money }}</div></div>
+  </div>
+
+  {% if can_return and sale.status != 'cancelled' %}
+  <div class="card mt-16">
+    <div class="card-title">{% t 'sales.return' %}</div>
+    <form method="post" action="{% url 'web:sale-return' sale.pk %}">
+      {% csrf_token %}
+      <div class="form-grid">
+        {% for item in sale.items.all %}
+          <div class="field">
+            <label class="field-label">{{ item.product_name }} ({{ item.quantity }})</label>
+            <input class="input" type="number" min="0" max="{{ item.quantity }}" name="return_qty_{{ item.pk }}" value="0">
+          </div>
+        {% endfor %}
+      </div>
+      <div class="field mt-12"><label class="field-label">{% t 'sales.returnReason' %}</label>
+        <select class="select" name="reason">
+          <option value="size">{% t 'sales.reason.size' %}</option>
+          <option value="defect">{% t 'sales.reason.defect' %}</option>
+          <option value="change_mind">{% t 'sales.reason.change_mind' %}</option>
+          <option value="other">{% t 'sales.reason.other' %}</option>
+        </select></div>
+      <div class="btn-row mt-12">
+        <button class="btn primary" type="submit">{% t 'sales.return' %}</button>
+      </div>
+    </form>
+  </div>
+  {% endif %}
+
+  {% if is_owner and sale.status != 'cancelled' %}
+  <div class="card mt-16">
+    <form method="post" action="{% url 'web:sale-cancel' sale.pk %}">
+      {% csrf_token %}
+      <button class="btn danger" type="button" data-confirm="{% t 'sales.cancelConfirm' %}">{% t 'sales.cancel' %}</button>
+    </form>
+  </div>
+  {% endif %}
+
+  {% if sale.returns.all %}
+  <div class="card mt-16">
+    <div class="card-title">{% t 'sales.returned' %}</div>
+    <table class="data">
+      <thead><tr><th>{% t 'common.date' %}</th><th>{% t 'sales.returnReason' %}</th><th class="num">{% t 'common.sum' %}</th></tr></thead>
+      <tbody>
+        {% for r in sale.returns.all %}
+          <tr><td class="muted">{{ r.created_at|date:'d.m.Y H:i' }}</td><td>{% tenum 'sales.reason' r.reason %}</td>
+            <td class="num">{{ r.total_amount|money }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

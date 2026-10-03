@@ -1,0 +1,30 @@
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  docker-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Testlarni izolyatsiyalangan Docker stack ichida ishga tushirish
+        run: |
+          chmod +x deploy/scripts/*.sh
+          ./deploy/scripts/test.sh
+
+      # Ixtiyoriy avtomatik deploy: quyidagi secret'larni qo'shsangiz ishlaydi:
+      #   SSH_HOST, SSH_USER, SSH_KEY (private, OpenSSH), SSH_PORT, DEPLOY_PATH
+      # - name: SSH orqali deploy
+      #   if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+      #   uses: appleboy/ssh-action@v1
+      #   with:
+      #     host: ${{ secrets.SSH_HOST }}
+      #     username: ${{ secrets.SSH_USER }}
+      #     key: ${{ secrets.SSH_KEY }}
+      #     port: ${{ secrets.SSH_PORT }}
+      #     script: |
+      #       cd ${{ secrets.DEPLOY_PATH }}
+      #       ./deploy/scripts/deploy.sh --pull

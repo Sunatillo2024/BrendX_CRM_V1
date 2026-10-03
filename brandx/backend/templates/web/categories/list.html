@@ -1,0 +1,107 @@
+{% extends 'web/base.html' %}
+{% load static web_extras %}
+{% block title %}{% t 'categories.title' %} · {{ BUSINESS_NAME }}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div class="page-title">{% t 'categories.title' %}</div>
+  <button class="btn primary" type="button" data-open-category data-mode="create">
+    <span class="material-icons-round">add</span>{% t 'categories.new' %}
+  </button>
+</div>
+
+<div class="page-body">
+  <div class="card pad-0">
+    {% if categories %}
+      <div class="table-wrap">
+        <table class="data">
+          <thead><tr>
+            <th>{% t 'categories.name' %}</th>
+            <th>{% t 'categories.description' %}</th>
+            <th class="num">{% t 'categories.productCount' %}</th>
+            <th class="actions">{% t 'common.actions' %}</th>
+          </tr></thead>
+          <tbody>
+            {% for c in categories %}
+              <tr>
+                <td class="strong">{{ c.name }}</td>
+                <td class="muted">{{ c.description|default:'—' }}</td>
+                <td class="num">{{ c.product_count }}</td>
+                <td class="actions">
+                  <div class="btn-row" style="justify-content:flex-end">
+                    <button class="btn sm" type="button" data-open-category data-mode="edit"
+                            data-id="{{ c.pk }}" data-name="{{ c.name }}" data-description="{{ c.description }}"
+                            data-active="{{ c.is_active|yesno:'1,0' }}">
+                      <span class="material-icons-round">edit</span>{% t 'common.edit' %}
+                    </button>
+                    <form method="post" action="{% url 'web:category-delete' c.pk %}">
+                      {% csrf_token %}
+                      <button class="btn sm danger" type="button"
+                              data-confirm="{% t 'categories.deleteTitle' %}">{% t 'common.delete' %}</button>
+                    </form>
+                  </div>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="empty-state">
+        <span class="material-icons-round">category</span>
+        <h4>{% t 'categories.emptyTitle' %}</h4>
+        <p>{% t 'categories.emptyHint' %}</p>
+      </div>
+    {% endif %}
+  </div>
+</div>
+
+<div class="modal-backdrop" id="category-modal" hidden>
+  <div class="modal">
+    <form method="post" action="{% url 'web:category-save' %}">
+      {% csrf_token %}
+      <div class="modal-head"><h3 id="category-modal-title">{% t 'categories.new' %}</h3></div>
+      <div class="modal-body">
+        <input type="hidden" name="id" id="category-id">
+        <div class="field"><label class="field-label">{% t 'categories.name' %}</label>
+          <input class="input" name="name" id="category-name" required></div>
+        <div class="field mt-12"><label class="field-label">{% t 'categories.description' %}</label>
+          <textarea class="textarea" name="description" id="category-description" rows="2"></textarea></div>
+        <input type="hidden" name="is_active" value="on">
+      </div>
+      <div class="modal-foot">
+        <button class="btn" type="button" data-close-modal>{% t 'common.cancel' %}</button>
+        <button class="btn primary" type="submit">{% t 'common.save' %}</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  (function () {
+    var modal = document.getElementById('category-modal');
+    function open(data) {
+      document.getElementById('category-id').value = data.id || '';
+      document.getElementById('category-name').value = data.name || '';
+      document.getElementById('category-description').value = data.description || '';
+      document.getElementById('category-modal-title').textContent =
+        data.mode === 'edit' ? "{% t 'categories.edit' %}" : "{% t 'categories.new' %}";
+      modal.hidden = false;
+    }
+    document.querySelectorAll('[data-open-category]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        open({
+          mode: btn.getAttribute('data-mode'),
+          id: btn.getAttribute('data-id'),
+          name: btn.getAttribute('data-name'),
+          description: btn.getAttribute('data-description'),
+        });
+      });
+    });
+    modal.querySelector('[data-close-modal]').addEventListener('click', function () { modal.hidden = true; });
+    modal.addEventListener('click', function (e) { if (e.target === modal) modal.hidden = true; });
+  })();
+</script>
+{% endblock %}

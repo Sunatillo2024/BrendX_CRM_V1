@@ -1,0 +1,394 @@
+{% extends 'web/base.html' %}
+{% load static web_extras %}
+{% block title %}{% t 'pos.title' %} · {{ BUSINESS_NAME }}{% endblock %}
+
+{% block content %}
+<div class="page-body" id="pos">
+  <div class="pos-grid">
+
+    <!-- ── Katalog ─────────────────────────────────────────────── -->
+    <div>
+      <div class="pos-search">
+        <span class="material-icons-round">qr_code_scanner</span>
+        <input type="text" id="pos-search" placeholder="{% t 'pos.searchPlaceholder' %}" autocomplete="off" autofocus>
+        <kbd>F2</kbd>
+      </div>
+
+      <div class="pos-chips" id="pos-chips">
+        <button class="chip active" type="button" data-cat="">{% t 'pos.all' %}</button>
+        {% for c in categories %}
+          <button class="chip" type="button" data-cat="{{ c.pk }}">{{ c.name }}</button>
+        {% endfor %}
+      </div>
+
+      <div class="pos-cards" id="pos-results"></div>
+      <div class="empty" id="pos-empty">{% t 'pos.getStarted' %}</div>
+    </div>
+
+    <!-- ── Savat ───────────────────────────────────────────────── -->
+    <div class="pos-cart" id="cart-panel">
+      <div class="pos-cart-head">
+        <span class="material-icons-round">shopping_cart</span>
+        <span class="pos-cart-title">{% t 'pos.cart' %}</span>
+        <span class="pos-count" id="cart-count">0</span>
+        <button class="icon-btn" type="button" id="clear-btn" title="{% t 'pos.clear' %}">
+          <span class="material-icons-round">delete_sweep</span>
+        </button>
+      </div>
+
+      <div id="cart" class="pos-lines"></div>
+
+      <div class="pos-cart-foot">
+        <div class="between"><span class="muted">{% t 'pos.subtotal' %}</span>
+          <span id="cart-subtotal" class="pos-subtotal">0</span></div>
+        <button class="pos-pay" type="button" id="pay-btn" disabled>
+          <span class="material-icons-round">payments</span>
+          <span class="pos-pay-label">{% t 'pos.pay' %}</span>
+          <span class="pos-pay-amount" id="pay-btn-amount">0</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── To'lov oynasi ───────────────────────────────────────────── -->
+<div class="modal-backdrop" id="pay-modal" hidden>
+  <div class="modal pos-modal">
+    <div class="modal-head"><h3>{% t 'pos.paymentMethod' %}</h3>
+      <button class="icon-btn" type="button" data-close-pay><span class="material-icons-round">close</span></button></div>
+    <div class="modal-body">
+
+      <div class="pos-total-box">
+        <span class="muted">{% t 'common.total' %}</span>
+        <span class="pos-total" id="pay-total">0</span>
+      </div>
+
+      <div class="tabs" id="pay-tabs">
+        <button class="tab active" type="button" data-method="cash">{% t 'pos.cash' %}</button>
+        <button class="tab" type="button" data-method="card">{% t 'pos.card' %}</button>
+        <button class="tab" type="button" data-method="mixed">{% t 'pos.mixed' %}</button>
+      </div>
+
+      <div class="field mt-12"><label class="field-label">{% t 'pos.discount' %}</label>
+        <input class="input pos-num" id="pay-discount" inputmode="decimal" value="0"></div>
+
+      <div class="field mt-12" id="received-field"><label class="field-label">{% t 'pos.received' %}</label>
+        <input class="input pos-num pos-input-big" id="pay-received" inputmode="decimal" value="">
+        <div class="pos-quick">
+          <button class="chip" type="button" data-quick="exact">{% t 'pos.quickExact' %}</button>
+          <button class="chip" type="button" data-quick="5000">+5 000</button>
+          <button class="chip" type="button" data-quick="10000">+10 000</button>
+          <button class="chip" type="button" data-quick="50000">+50 000</button>
+        </div>
+      </div>
+
+      <div class="field mt-12" id="card-field" hidden><label class="field-label">{% t 'pos.cardAmount' %}</label>
+        <input class="input pos-num pos-input-big" id="pay-card" inputmode="decimal" value=""></div>
+
+      <div class="pos-change-box">
+        <span class="muted">{% t 'pos.change' %}</span>
+        <span class="pos-change" id="pay-change">0</span>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" type="button" data-close-pay>{% t 'common.cancel' %}</button>
+      <button class="btn primary lg" type="button" id="confirm-pay">{% t 'pos.confirmPayment' %}</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  (function () {
+    'use strict';
+    var cart = [];  // {variant_id, name, color, size, price, qty, stock}
+    var currentCategory = '';
+    var lastResults = [];
+    var method = 'cash';
+
+    var resultsHost = document.getElementById('pos-results');
+    var emptyEl = document.getElementById('pos-empty');
+    var modal = document.getElementById('pay-modal');
+
+    function money(n) { return Number(n || 0).toLocaleString('ru-RU'); }
+    function num(el) { return Number(String(el.value || '0').replace(',', '.')) || 0; }
+    function subtotal() { return cart.reduce(function (s, i) { return s + i.price * i.qty; }, 0); }
+    function discount() { return Math.max(0, num(document.getElementById('pay-discount'))); }
+    function effectiveTotal() { return Math.max(0, subtotal() - discount()); }
+    function itemsCount() { return cart.reduce(function (s, i) { return s + i.qty; }, 0); }
+
+    /* Barcode scanners type into whatever is focused - keep the search box
+       always focused so a scan lands here immediately. */
+    function focusSearch() {
+      var el = document.getElementById('pos-search');
+      if (el && document.activeElement !== el) { el.focus(); el.select(); }
+    }
+    function flashCart() {
+      var panel = document.getElementById('cart-panel');
+      panel.classList.remove('flash');
+      void panel.offsetWidth;  // restart the animation
+      panel.classList.add('flash');
+    }
+
+    /* ── Katalog ─────────────────────────────────────────────── */
+    function cardHTML(v) {
+      var out = v.stock_quantity <= 0;
+      var stockCls = out ? ' zero' : (v.stock_quantity <= 5 ? ' low' : '');
+      return '<button type="button" class="pos-card' + (out ? ' soldout' : '') + '" data-vid="' + v.id + '">' +
+        '<span class="pos-card-name">' + v.product_name + '</span>' +
+        '<span class="pos-card-meta">' + [v.color_name, v.size_name].filter(Boolean).join(' · ') +
+          (v.barcode ? ' · ' + v.barcode : '') + '</span>' +
+        '<span class="pos-card-price">' + money(v.price) + '</span>' +
+        '<span class="pos-card-stock' + stockCls + '">' + v.stock_quantity + ' ' + BrandX.t('pos.pcs') + '</span>' +
+        '</button>';
+    }
+
+    function renderResults(items) {
+      lastResults = items;
+      resultsHost.innerHTML = items.map(cardHTML).join('');
+      emptyEl.hidden = items.length > 0;
+    }
+
+    function fetchResults() {
+      var q = document.getElementById('pos-search').value.trim();
+      var url = "{% url 'web:pos-search' %}?limit=60&category=" + encodeURIComponent(currentCategory) +
+                '&q=' + encodeURIComponent(q);
+      return fetch(url).then(function (r) { return r.json(); })
+        .then(function (d) { renderResults(d.results || []); return d.results || []; });
+    }
+
+    resultsHost.addEventListener('click', function (e) {
+      var card = e.target.closest('.pos-card');
+      if (!card) return;
+      var vid = card.getAttribute('data-vid');
+      var item = lastResults.find(function (i) { return String(i.id) === vid; });
+      if (item) addToCart(item);
+    });
+
+    document.getElementById('pos-chips').addEventListener('click', function (e) {
+      var chip = e.target.closest('[data-cat]');
+      if (!chip) return;
+      currentCategory = chip.getAttribute('data-cat');
+      document.querySelectorAll('#pos-chips .chip').forEach(function (c) { c.classList.remove('active'); });
+      chip.classList.add('active');
+      fetchResults();
+      focusSearch();
+    });
+
+    var searchTimer = null;
+    document.getElementById('pos-search').addEventListener('input', function (e) {
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(fetchResults, 200);
+    });
+    document.getElementById('pos-search').addEventListener('keydown', function (e) {
+      if (e.key !== 'Enter') return;
+      e.preventDefault();
+      var value = e.target.value.trim();
+      if (!value) return;
+      /* Code-like input (digits/dashes) = barcode scan. Anything else is a
+         name search: filter the list and auto-add when exactly one variant
+         matches, instead of failing with a confusing "not found" error. */
+      if (!/^[\d\-]{6,}$/.test(value.replace(/\s/g, ''))) {
+        fetchResults().then(function (items) {
+          if (items.length === 1) { addToCart(items[0]); e.target.value = ''; }
+          else { e.target.select(); }
+        });
+        return;
+      }
+      fetch("{% url 'web:pos-barcode' %}?code=" + encodeURIComponent(value))
+        .then(function (r) { return r.ok ? r.json() : Promise.resolve({ notFound: true }); })
+        .then(function (d) {
+          if (d.notFound) { BrandX.toast(BrandX.t('pos.notFound'), 'error'); e.target.select(); return; }
+          if (d.type === 'variant') addToCart(d.variant);
+          else if (d.type === 'product' && d.variants.length === 1) addToCart(d.variants[0]);
+          else if (d.type === 'product') { renderResults(d.variants || []); return; }
+          else { e.target.select(); return; }
+          e.target.value = '';
+          focusSearch();
+        });
+    });
+
+    /* ── Savat ───────────────────────────────────────────────── */
+    function addToCart(v) {
+      if (v.stock_quantity <= 0) { BrandX.toast(BrandX.t('pos.outOfStock'), 'warn'); focusSearch(); return; }
+      var row = cart.find(function (i) { return i.variant_id === v.id; });
+      if (row) {
+        if (row.qty >= v.stock_quantity) { BrandX.toast(BrandX.t('pos.onlyStock'), 'warn'); focusSearch(); return; }
+        row.qty += 1;
+      } else {
+        cart.push({ variant_id: v.id, name: v.product_name, color: v.color_name, size: v.size_name,
+                    price: Number(v.price), qty: 1, stock: v.stock_quantity });
+      }
+      renderCart(); flashCart(); focusSearch();
+    }
+
+    function renderCart() {
+      var host = document.getElementById('cart');
+      if (!cart.length) {
+        host.innerHTML = '<div class="empty">' + BrandX.t('pos.emptyCart') + '</div>';
+      } else {
+        host.innerHTML = cart.map(function (i) {
+          return '<div class="pos-line" data-vid="' + i.variant_id + '">' +
+            '<div class="pos-line-info"><div class="pos-line-name">' + i.name + '</div>' +
+              '<div class="small muted">' + [i.color, i.size].filter(Boolean).join(' · ') + '</div></div>' +
+            '<div class="pos-line-ctrl">' +
+              '<button class="pos-step" type="button" data-dec>&minus;</button>' +
+              '<span class="pos-qty">' + i.qty + '</span>' +
+              '<button class="pos-step" type="button" data-inc>+</button>' +
+            '</div>' +
+            '<span class="pos-line-sum">' + money(i.price * i.qty) + '</span>' +
+            '<button class="icon-btn" type="button" data-del><span class="material-icons-round">close</span></button>' +
+            '</div>';
+        }).join('');
+      }
+      document.getElementById('cart-count').textContent = itemsCount();
+      document.getElementById('cart-subtotal').textContent = money(subtotal());
+      document.getElementById('pay-btn-amount').textContent = money(effectiveTotal());
+      document.getElementById('pay-btn').disabled = cart.length === 0;
+    }
+
+    document.getElementById('cart').addEventListener('click', function (e) {
+      var line = e.target.closest('.pos-line');
+      if (!line) return;
+      var vid = Number(line.getAttribute('data-vid'));
+      var item = cart.find(function (i) { return i.variant_id === vid; });
+      if (!item) return;
+      if (e.target.closest('[data-inc]')) {
+        if (item.qty < item.stock) { item.qty += 1; renderCart(); }
+        else { BrandX.toast(BrandX.t('pos.onlyStock'), 'warn'); }
+      } else if (e.target.closest('[data-dec]')) {
+        item.qty -= 1;
+        if (item.qty <= 0) cart.splice(cart.indexOf(item), 1);
+        renderCart();
+      } else if (e.target.closest('[data-del]')) {
+        cart.splice(cart.indexOf(item), 1);
+        renderCart();
+      }
+    });
+
+    document.getElementById('clear-btn').addEventListener('click', function () {
+      cart = []; renderCart(); BrandX.toast(BrandX.t('pos.cleared'), 'info'); focusSearch();
+    });
+
+    /* ── To'lov ──────────────────────────────────────────────── */
+    document.getElementById('pay-btn').addEventListener('click', function () {
+      method = 'cash';
+      document.querySelectorAll('#pay-tabs .tab').forEach(function (t) {
+        t.classList.toggle('active', t.getAttribute('data-method') === 'cash');
+      });
+      document.getElementById('pay-card').value = '';
+      document.getElementById('pay-discount').value = '0';
+      /* Cash starts as an exact payment so the change is immediately visible;
+         quick chips add more on top. */
+      document.getElementById('pay-received').value = effectiveTotal();
+      modal.hidden = false;
+      updatePayFields();
+      document.getElementById('pay-received').focus();
+      document.getElementById('pay-received').select();
+    });
+    modal.querySelectorAll('[data-close-pay]').forEach(function (b) {
+      b.addEventListener('click', function () { modal.hidden = true; focusSearch(); });
+    });
+    modal.addEventListener('click', function (e) {
+      if (e.target === modal) { modal.hidden = true; focusSearch(); }
+    });
+
+    document.getElementById('pay-tabs').addEventListener('click', function (e) {
+      var tab = e.target.closest('[data-method]');
+      if (!tab) return;
+      method = tab.getAttribute('data-method');
+      document.querySelectorAll('#pay-tabs .tab').forEach(function (t) { t.classList.remove('active'); });
+      tab.classList.add('active');
+      updatePayFields();
+    });
+
+    function updatePayFields() {
+      document.getElementById('received-field').hidden = method === 'card';
+      document.getElementById('card-field').hidden = method !== 'mixed';
+      recompute();
+    }
+    function recompute() {
+      var total = effectiveTotal();
+      var received = num(document.getElementById('pay-received'));
+      var card = num(document.getElementById('pay-card'));
+      var change = 0;
+      if (method === 'cash') change = received - total;
+      else if (method === 'mixed') change = received + card - total;
+      document.getElementById('pay-total').textContent = money(total);
+      document.getElementById('pay-btn-amount').textContent = money(effectiveTotal());
+      document.getElementById('pay-change').textContent = money(change > 0 ? change : 0);
+    }
+    ['pay-received', 'pay-card', 'pay-discount'].forEach(function (id) {
+      document.getElementById(id).addEventListener('input', recompute);
+    });
+
+    document.querySelector('.pos-quick').addEventListener('click', function (e) {
+      var chip = e.target.closest('[data-quick]');
+      if (!chip) return;
+      var el = document.getElementById('pay-received');
+      if (chip.getAttribute('data-quick') === 'exact') { el.value = effectiveTotal(); }
+      else { el.value = num(el) + Number(chip.getAttribute('data-quick')); }
+      recompute();
+    });
+
+    document.getElementById('confirm-pay').addEventListener('click', function () {
+      var btn = this;
+      btn.disabled = true;
+      var payload = {
+        payment_method: method,
+        items: cart.map(function (i) {
+          return { product_variant_id: i.variant_id, quantity: i.qty, unit_price: i.price };
+        }),
+        received_amount: num(document.getElementById('pay-received')),
+        card_amount: num(document.getElementById('pay-card')),
+        discount_amount: num(document.getElementById('pay-discount')),
+      };
+      fetch("{% url 'web:pos-checkout' %}", {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+        body: JSON.stringify(payload),
+      }).then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+        .then(function (res) {
+          btn.disabled = false;
+          if (!res.ok) {
+            /* Server sends stable error codes - show them in the UI language. */
+            var messages = {
+              insufficient_stock: BrandX.t('pos.outOfStock'),
+              invalid_discount: BrandX.t('pos.badDiscount'),
+              insufficient_cash: BrandX.t('pos.needMoreCash'),
+              insufficient_total: BrandX.t('pos.needMoreCash'),
+              invalid_card: BrandX.t('pos.badPayment'),
+              empty_cart: BrandX.t('pos.emptyCart'),
+            };
+            BrandX.toast(messages[res.d.code] || res.d.detail || BrandX.t('common.error'), 'error');
+            return;
+          }
+          /* Receipt stays stored (re-printable from Sotuvlar) - the terminal
+             resets right away for the next customer. */
+          modal.hidden = true;
+          BrandX.toast(BrandX.t('pos.saleDone') + ' · №' + res.d.sale_number, 'success');
+          cart = [];
+          setTimeout(function () { window.location.reload(); }, 450);
+        })
+        .catch(function () { btn.disabled = false; BrandX.toast(BrandX.t('common.error'), 'error'); });
+    });
+
+    /* Keyboard-first POS: F2 = search, F4 = pay, Esc = close payment. */
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'F2') { e.preventDefault(); focusSearch(); }
+      else if (e.key === 'F4') {
+        e.preventDefault();
+        if (cart.length) document.getElementById('pay-btn').click();
+      } else if (e.key === 'Escape' && !modal.hidden) {
+        modal.hidden = true; focusSearch();
+      }
+    });
+
+    // Initial load
+    fetchResults();
+    renderCart();
+    focusSearch();
+  })();
+</script>
+{% endblock %}

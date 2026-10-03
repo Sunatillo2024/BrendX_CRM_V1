@@ -1,0 +1,186 @@
+{% extends 'web/base.html' %}
+{% load static web_extras %}
+{% block title %}{% t 'receipts.title' %} · {{ BUSINESS_NAME }}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div class="page-title">{% t 'receipts.title' %}</div>
+  <button class="btn primary" type="button" data-open-receipt>
+    <span class="material-icons-round">add</span>{% t 'receipts.new' %}
+  </button>
+</div>
+
+<div class="page-body">
+  <div class="card pad-0">
+    {% if receipts %}
+      <div class="table-wrap">
+        <table class="data">
+          <thead><tr>
+            <th>{% t 'receipts.number' %}</th><th>{% t 'common.date' %}</th>
+            <th class="num">{% t 'common.quantity' %}</th>
+            <th class="num">{% t 'receipts.totalCost' %}</th>
+            <th>{% t 'receipts.createdBy' %}</th><th class="actions"></th>
+          </tr></thead>
+          <tbody>
+            {% for r in receipts %}
+              <tr>
+                <td class="strong">№{{ r.number }}</td>
+                <td class="muted">{{ r.receipt_date|date:'d.m.Y' }}</td>
+                <td class="num">{{ r.total_quantity }}</td>
+                <td class="num strong">{{ r.total_cost|money }} {{ store.currency_symbol }}</td>
+                <td class="muted">{{ r.created_by.display_name|default:'—' }}</td>
+                <td class="actions">
+                  <a class="btn sm" href="{% url 'web:receipt-detail' r.pk %}">{% t 'receipts.detail' %}</a>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}<div class="empty">{% t 'common.noData' %}</div>{% endif %}
+  </div>
+</div>
+
+<div class="drawer-backdrop" id="receipt-drawer" hidden>
+  <div class="drawer" style="max-width:560px">
+    <form method="post" id="receipt-form">
+      {% csrf_token %}
+      <div class="drawer-head"><h3>{% t 'receipts.new' %}</h3>
+        <button class="icon-btn" type="button" data-close-drawer><span class="material-icons-round">close</span></button></div>
+      <div class="drawer-body">
+        <div class="field"><label class="field-label">{% t 'common.product' %}</label>
+          <div class="search-box"><span class="material-icons-round">search</span>
+            <input type="text" id="receipt-search" placeholder="{% t 'pos.scan' %}" autocomplete="off"></div>
+          <div id="receipt-results" class="menu" hidden style="width:100%;position:static;margin-top:6px"></div>
+        </div>
+
+        <div class="table-wrap mt-12">
+          <table class="data"><thead><tr>
+            <th>{% t 'common.product' %}</th><th class="num">{% t 'common.quantity' %}</th>
+            <th class="num">{% t 'products.costPrice' %}</th><th class="num">{% t 'common.total' %}</th><th></th>
+          </tr></thead><tbody id="receipt-lines"></tbody></table>
+        </div>
+
+        <div class="receipt-sums">
+          <div class="between"><span class="muted">{% t 'receipts.totalQuantity' %}</span>
+            <span class="strong" id="receipt-sum-qty">0</span></div>
+          <div class="between mt-8"><span class="muted">{% t 'receipts.totalCost' %}</span>
+            <span class="receipt-sum-total" id="receipt-sum-cost">0</span></div>
+        </div>
+
+        <div class="field mt-12"><label class="field-label">{% t 'finance.comment' %}</label>
+          <textarea class="textarea" name="notes" rows="2"></textarea></div>
+      </div>
+      <div class="drawer-foot">
+        <button class="btn" type="button" data-close-drawer>{% t 'common.cancel' %}</button>
+        <button class="btn primary" type="submit">{% t 'common.save' %}</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  (function () {
+    'use strict';
+    var drawer = document.getElementById('receipt-drawer');
+    var lines = document.getElementById('receipt-lines');
+
+    document.querySelector('[data-open-receipt]').addEventListener('click', function () { drawer.hidden = false; });
+    drawer.querySelectorAll('[data-close-drawer]').forEach(function (b) {
+      b.addEventListener('click', function () { drawer.hidden = true; });
+    });
+
+    function money(n) { return Number(n || 0).toLocaleString('ru-RU'); }
+
+    function recalc() {
+      var qty = 0, cost = 0;
+      lines.querySelectorAll('tr').forEach(function (tr) {
+        qty += Number(tr.querySelector('[name=quantity]').value || 0);
+        cost += Number(tr.querySelector('[name=quantity]').value || 0) *
+                Number(tr.querySelector('[name=cost_price]').value || 0);
+      });
+      document.getElementById('receipt-sum-qty').textContent = qty;
+      document.getElementById('receipt-sum-cost').textContent = money(cost);
+    }
+
+    function addLine(v) {
+      /* The same variant twice becomes +1 qty instead of a duplicate row. */
+      var existing = lines.querySelector('tr[data-vid="' + v.id + '"]');
+      if (existing) {
+        var qtyEl = existing.querySelector('[name=quantity]');
+        qtyEl.value = Number(qtyEl.value || 0) + 1;
+        recalc();
+        return;
+      }
+      var tr = document.createElement('tr');
+      tr.setAttribute('data-vid', v.id);
+      tr.innerHTML =
+        '<td>' + v.product_name + (v.color_name ? ' · ' + v.color_name : '') + (v.size_name ? ' · ' + v.size_name : '') +
+        '<input type="hidden" name="variant_id" value="' + v.id + '"></td>' +
+        '<td class="num"><input class="input" name="quantity" value="1" inputmode="numeric" style="width:80px"></td>' +
+        '<td class="num"><input class="input" name="cost_price" value="' + v.price + '" inputmode="decimal" style="width:110px"></td>' +
+        '<td class="num receipt-line-total">—</td>' +
+        '<td><button class="icon-btn" type="button"><span class="material-icons-round">close</span></button></td>';
+      var rowTotal = tr.querySelector('.receipt-line-total');
+      function updateRow() {
+        rowTotal.textContent = money(Number(tr.querySelector('[name=quantity]').value || 0) *
+                                     Number(tr.querySelector('[name=cost_price]').value || 0));
+        recalc();
+      }
+      tr.querySelector('[name=quantity]').addEventListener('input', updateRow);
+      tr.querySelector('[name=cost_price]').addEventListener('input', updateRow);
+      tr.querySelector('button').addEventListener('click', function () { tr.remove(); recalc(); });
+      lines.appendChild(tr);
+      updateRow();
+    }
+
+    var timer = null;
+    var searchEl = document.getElementById('receipt-search');
+    var results = document.getElementById('receipt-results');
+
+    function runSearch(autoAdd) {
+      var q = searchEl.value.trim();
+      if (!q) { results.hidden = true; return; }
+      fetch("{% url 'web:pos-search' %}?q=" + encodeURIComponent(q) + "&limit=10")
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          var rows = data.results || [];
+          /* Scanners send code + Enter: a unique match goes straight to the
+             lines, otherwise the list opens for a manual pick. */
+          if (autoAdd && rows.length === 1) {
+            addLine(rows[0]); results.hidden = true; searchEl.value = '';
+            return;
+          }
+          results.innerHTML = '';
+          rows.forEach(function (v) {
+            var btn = document.createElement('button');
+            btn.type = 'button'; btn.className = 'menu-item';
+            btn.textContent = v.product_name + (v.color_name ? ' · ' + v.color_name : '') +
+              (v.size_name ? ' · ' + v.size_name : '') + ' (' + v.stock_quantity + ')';
+            btn.addEventListener('click', function () {
+              addLine(v); results.hidden = true; searchEl.value = '';
+            });
+            results.appendChild(btn);
+          });
+          results.hidden = !rows.length;
+          if (autoAdd && !rows.length) {
+            if (window.BrandX) BrandX.toast(BrandX.t('pos.notFound'), 'warn');
+          }
+        });
+    }
+
+    searchEl.addEventListener('input', function () {
+      clearTimeout(timer);
+      timer = setTimeout(function () { runSearch(false); }, 220);
+    });
+    /* Enter (scanner or keyboard) must add a line - never submit the form. */
+    searchEl.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') { e.preventDefault(); clearTimeout(timer); runSearch(true); }
+    });
+
+    recalc();
+  })();
+</script>
+{% endblock %}

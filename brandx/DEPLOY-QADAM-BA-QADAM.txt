@@ -1,0 +1,162 @@
+=====================================================================
+  BRANDX - PRODUCTION'GA QADAM-BA-QADAM DEPLOY QO'LLANMASI
+  Server: 129.101.125.203 (domensiz, HTTP)
+  Sana: 2026-10-03
+=====================================================================
+
+
+1-QADAM: SERVERGA ULANISH
+---------------------------------------------------------------------
+O'z kompyuteringizdan terminal oching:
+
+    ssh root@129.101.125.203
+    # yoki
+    ssh user@129.101.125.203
+
+
+2-QADAM: SERVERGA DOCKER O'RNATISH (bir marta)
+---------------------------------------------------------------------
+Serverda:
+
+    sudo apt-get update
+    sudo apt-get install -y ca-certificates curl gnupg git
+
+    sudo install -m 0755 -d /etc/apt/keyrings
+    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] \
+    https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo $VERSION_CODENAME) stable" \
+      | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+    sudo apt-get update
+    sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+
+    docker run --rm hello-world        # <- ishlagani tekshiruv
+
+
+3-QADAM: FIREWALL
+---------------------------------------------------------------------
+    sudo ufw allow OpenSSH
+    sudo ufw allow 80/tcp
+    sudo ufw enable
+    sudo ufw status
+
+
+4-QADAM: KODNI SERVERGA KO'CHIRISH
+---------------------------------------------------------------------
+O'Z KOMPYUTERINGIZDA (yangi terminal, loyiha papkasidan):
+
+    cd ~/Desktop/BrandX/brandx
+
+    rsync -av --exclude '.env' --exclude '__pycache__' --exclude 'backend/media' \
+      --exclude 'backend/staticfiles' \
+      ./ root@129.101.125.203:~/brandx/
+
+    scp deploy/.env.prod root@129.101.125.203:~/brandx/deploy/.env.prod
+
+DIQQAT: deploy/.env.prod fayli git'ga kirmaydi (maxfiy kalitlar bor) -
+shuning uchun uni alohida scp bilan ko'chirish MAJBURIY!
+
+
+5-QADAM: SERVERDA DEPLOY
+---------------------------------------------------------------------
+Serverga qaytib:
+
+    cd ~/brandx
+    chmod +x deploy/scripts/*.sh
+    ./deploy/scripts/preflight.sh          # port/env tekshiruvi
+    ./deploy/scripts/deploy.sh --skip-tests
+
+Bu avtomatik bajaradi:
+  - backup
+  - production image qurish
+  - ma'lumotlar bazasi migratsiyalari
+  - platform admin yaratish (BOOTSTRAP_ADMIN=true bo'lsa)
+  - static fayllarni yig'ish
+  - gunicorn ishga tushirish
+  - 'healthy' bo'lguncha kutish
+
+Oxirida korasiz:  ==> Deploy MUVAFFAQIYATLI ✓
+
+
+6-QADAM: TEKSHIRISH
+---------------------------------------------------------------------
+Brauzerda oching:  http://129.101.125.203
+
+Serverda ham tekshirish mumkin:
+
+    curl http://129.101.125.203/health/
+    # javob: {"status":"ok","database":true}
+
+
+7-QADAM: DO'KONINGIZNI YARATISH (bir marta)
+---------------------------------------------------------------------
+1) Oching:        http://129.101.125.203/platform/login/
+
+2) Kirish (platform admin - avtomatik yaratilgan):
+       Login : admin
+       Parol : DH-0yEceKLJnVcAR
+       PIN   : 9469
+
+3) Platform -> Dokonlar -> Yaratish
+   -> dokon nomi, kodi (masalan MAIN), telefon
+
+4) "Egasini boshqarish" (manage-owner) ->
+   ega ismi + PIN (masalan 1234) - bu sizning asosiy kirish PIN'ingiz
+
+5) Endi har kuni:
+       http://129.101.125.203/store/main/login/
+   -> ega PIN'i bilan kirasiz
+
+
+8-QADAM: ADMINNI HIMOYALASH (MUHIM!)
+---------------------------------------------------------------------
+    nano ~/brandx/deploy/.env.prod
+
+    BOOTSTRAP_ADMIN=true  ->  BOOTSTRAP_ADMIN=false qiling
+
+Bu admin har restart'da qayta yaratilmasligi uchun.
+
+
+KUNDALIK YANGILASH (keyinchalik)
+---------------------------------------------------------------------
+Kod ozgarsa:
+
+    cd ~/brandx
+    ./deploy/scripts/deploy.sh --pull     # git pull + test + backup + deploy
+    ./deploy/scripts/backup.sh            # faqat backup olish
+
+
+MUAMMO BO'LSA (TROUBLESHOOTING)
+---------------------------------------------------------------------
+    cd ~/brandx
+    docker compose -f deploy/docker-compose.prod.yml --env-file deploy/.env.prod ps
+    # holat
+
+    docker compose -f deploy/docker-compose.prod.yml --env-file deploy/.env.prod logs -f backend
+    # loglar
+
+    ./deploy/scripts/rollback.sh
+    # eski versiyaga qaytish
+
+
+MAXFIY MA'LUMOTLAR (deploy/.env.prod ichida)
+---------------------------------------------------------------------
+    Platform admin login  : admin
+    Platform admin parol  : DH-0yEceKLJnVcAR
+    Platform admin PIN    : 9469
+    DB parol              : wqxTuz1ZOL9nd-2PRy_oyM3B
+
+    !! Shu faylni hech kimga bermang va git'ga qo'shmang !!
+
+
+ESLATMALAR
+---------------------------------------------------------------------
+- Domensiz HTTP rejim: parollar shifrsiz uzatiladi. Domen olsangiz
+  HTTPS'ga o'tish 15 daqiqa (deploy/README.deploy.md, 9-bo'lim).
+- Production bazi BOSH boladi - demo malumotlar tushmaydi.
+- Sayt manzili: http://129.101.125.203
+- Agar 80-port band bolsa: deploy/.env.prod da
+  BRANDX_HTTP_PORT=8080 qiling va
+  CSRF_TRUSTED_ORIGINS=http://129.101.125.203:8080 yozing
+  -> sayt http://129.101.125.203:8080 da ochiladi.

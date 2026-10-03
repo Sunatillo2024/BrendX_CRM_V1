@@ -1,0 +1,32 @@
+# Isolated tests only; never attaches the existing MySQL/media/PostgreSQL volumes.
+services:
+  postgres-test:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: brandx_test
+      POSTGRES_USER: test_runner
+      POSTGRES_PASSWORD: disposable-test-only
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U test_runner -d brandx_test"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+  tests:
+    image: brandx-backend:latest
+    entrypoint: ["python", "manage.py"]
+    command: ["test", "apps", "--noinput", "--verbosity=1"]
+    depends_on:
+      postgres-test:
+        condition: service_healthy
+    environment:
+      DB_ENGINE: django.db.backends.postgresql
+      DB_NAME: brandx_test
+      DB_USER: test_runner
+      DB_PASSWORD: disposable-test-only
+      DB_HOST: postgres-test
+      DB_PORT: "5432"
+      SECRET_KEY: isolated-tests-only-not-a-production-key
+    volumes:
+      - ./backend:/app

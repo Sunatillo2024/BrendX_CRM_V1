@@ -1,0 +1,67 @@
+{% extends 'web/base.html' %}
+{% load static web_extras %}
+{% block title %}{% t 'sales.title' %} · {{ BUSINESS_NAME }}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div class="page-title">{% t 'sales.title' %}</div>
+</div>
+
+<div class="page-body">
+  <div class="card">
+    <form class="toolbar" method="get">
+      <div class="search-box" style="max-width:260px;flex:1">
+        <span class="material-icons-round">search</span>
+        <input type="search" name="q" value="{{ query }}" placeholder="{% t 'common.search' %}">
+      </div>
+      <div class="period-bar">
+        <a class="period-btn {% if period == 'today' %}active{% endif %}" href="?period=today">{% t 'common.today' %}</a>
+        <a class="period-btn {% if period == 'yesterday' %}active{% endif %}" href="?period=yesterday">{% t 'common.yesterday' %}</a>
+        <a class="period-btn {% if period == 'week' %}active{% endif %}" href="?period=week">{% t 'common.week' %}</a>
+        <a class="period-btn {% if period == 'month' %}active{% endif %}" href="?period=month">{% t 'common.month' %}</a>
+      </div>
+      <select class="select" name="payment_method" style="max-width:170px">
+        <option value="">{% t 'common.all' %}</option>
+        <option value="cash" {% if payment == 'cash' %}selected{% endif %}>{% t 'payment.cash' %}</option>
+        <option value="card" {% if payment == 'card' %}selected{% endif %}>{% t 'payment.card' %}</option>
+        <option value="mixed" {% if payment == 'mixed' %}selected{% endif %}>{% t 'payment.mixed' %}</option>
+      </select>
+      <button class="btn" type="submit">{% t 'common.search' %}</button>
+    </form>
+  </div>
+
+  <div class="card pad-0 mt-16">
+    {% if page_obj.object_list %}
+      <div class="table-wrap">
+        <table class="data">
+          <thead><tr>
+            <th>{% t 'sales.number' %}</th><th>{% t 'common.time' %}</th>
+            <th>{% t 'sales.cashier' %}</th><th>{% t 'sales.paymentMethod' %}</th>
+            <th class="num">{% t 'common.sum' %}</th><th>{% t 'common.status' %}</th>
+            <th class="actions"></th>
+          </tr></thead>
+          <tbody>
+            {% for sale in page_obj %}
+              <tr>
+                <td class="strong">{{ sale.sale_number }}</td>
+                <td class="muted nowrap">{{ sale.created_at|date:'d.m.Y H:i' }}</td>
+                <td>{{ sale.cashier.display_name }}</td>
+                <td><span class="badge">{% tenum 'payment' sale.payment_method %}</span></td>
+                <td class="num strong">{{ sale.total_amount|money }}</td>
+                <td>
+                  {% if sale.status == 'completed' %}<span class="badge success">{% t 'sales.status.completed' %}</span>
+                  {% elif sale.status == 'cancelled' %}<span class="badge danger">{% t 'sales.status.cancelled' %}</span>
+                  {% else %}<span class="badge warn">{% tenum 'sales.status' sale.status %}</span>{% endif %}
+                </td>
+                <td class="actions"><a class="btn sm" href="{% url 'web:sale-detail' sale.pk %}">{% t 'common.back' %}</a></td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}<div class="empty">{% t 'dashboard.noSales' %}</div>{% endif %}
+  </div>
+
+  {% include 'web/partials/pagination.html' %}
+</div>
+{% endblock %}

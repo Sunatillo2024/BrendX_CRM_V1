@@ -1,0 +1,66 @@
+# syntax=docker/dockerfile:1
+
+# BrandX backend - production image (multi-stage, non-root).
+# Build context: ./backend   (see deploy/docker-compose.prod.yml)
+
+# ---------------------------------------------------------------------------
+# Stage 1: build the Python wheels.
+# Compilers and MySQL headers live ONLY here and are never shipped.
+# ---------------------------------------------------------------------------
+FROM python:3.11-slim AS builder
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        build-essential \
+        pkg-config \
+        default-libmysqlclient-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /build
+COPY requirements.txt .
+RUN pip wheel --no-cache-dir --wheel-dir /wheels -r requirements.txt
+
+# ---------------------------------------------------------------------------
+# Stage 2: minimal runtime.
+# ---------------------------------------------------------------------------
+FROM python:3.11-slim AS runtime
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    DJANGO_SETTINGS_MODULE=brandx_api.settings
+
+# gettext       -> compilemessages for the O'zbekcha / Русский admin
+# libmariadb3   -> runtime library required by mysqlclient (legacy transfer only)
+# curl          -> container health check against /health/
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        gettext \
+        libmariadb3 \
+        curl \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=builder /wheels /wheels
+COPY requirements.txt .
+RUN pip install --no-cache-dir --no-index --find-links=/wheels -r requirements.txt \
+    && rm -rf /wheels
+
+WORKDIR /app
+COPY . .
+
+# Compile the admin/app translations at build time (no gettext needed at runtime).
+RUN python manage.py compilemessages -l uz -l ru
+
+# Dedicated unprivileged user - Django must never run as root.
+RUN useradd --create-home --uid 10001 appuser \
+    && mkdir -p /app/staticfiles /app/media \
+    && chown -R appuser:appuser /app \
+    && chmod +x /app/entrypoint.prod.sh
+
+USER appuser
+
+EXPOSE 8000
+
+ENTRYPOINT ["/app/entrypoint.prod.sh"]

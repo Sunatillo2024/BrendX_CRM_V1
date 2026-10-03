@@ -1,0 +1,59 @@
+{% extends 'web/base.html' %}
+{% load static web_extras %}
+{% block title %}{{ store.name }} · Platform{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div class="page-title">{{ store.name }} <span class="muted small">({{ store.code }})</span></div>
+  <a class="btn" href="{% url 'web:platform' %}"><span class="material-icons-round">arrow_back</span>{% t 'common.back' %}</a>
+</div>
+
+<div class="page-body">
+  <div class="grid grid-4">
+    <div class="stat"><div class="stat-label">Xodimlar</div><div class="stat-value">{{ employees_count }}</div></div>
+    <div class="stat"><div class="stat-label">Mahsulotlar</div><div class="stat-value">{{ products_count }}</div></div>
+    <div class="stat"><div class="stat-label">Bugungi sotuvlar</div><div class="stat-value">{{ sales_today }}</div></div>
+    <div class="stat"><div class="stat-label">Oxirgi faollik</div><div class="stat-value small">{{ last_activity|date:'d.m.Y H:i'|default:'—' }}</div></div>
+  </div>
+
+  <div class="grid grid-2 mt-16">
+    <div class="card">
+      <div class="card-title">Do'kon</div>
+      <form method="post" action="{% url 'web:platform-store-update' store.pk %}">
+        {% csrf_token %}
+        <div class="field"><label class="field-label">Nomi</label><input class="input" name="name" value="{{ store.name }}"></div>
+        <div class="field mt-12"><label class="field-label">Telefon</label><input class="input" name="phone" value="{{ store.phone }}"></div>
+        <div class="field mt-12"><label class="field-label">Manzil</label><textarea class="textarea" name="address" rows="2">{{ store.address }}</textarea></div>
+        <div class="btn-row mt-16">
+          <button class="btn primary" type="submit">{% t 'common.save' %}</button>
+          <button class="btn {% if store.is_active %}danger{% else %}success{% endif %}" type="submit" name="toggle" value="1">
+            {% if store.is_active %}Faolsizlantirish{% else %}Faollashtirish{% endif %}
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Egasi</div>
+      {% if owners %}
+        {% for o in owners %}
+          <div class="between mb-8">
+            <span class="strong">{{ o.display_name }}</span>
+            <span class="badge {% if o.is_active %}success{% else %}{% endif %}">{{ o.username }}</span>
+          </div>
+        {% endfor %}
+      {% else %}<div class="empty">Ega yo'q</div>{% endif %}
+      <form method="post" action="{% url 'web:platform-manage-owner' store.pk %}" class="mt-12">
+        {% csrf_token %}
+        <div class="form-grid">
+          <div class="field"><label class="field-label">Ism</label><input class="input" name="name" required></div>
+          <div class="field"><label class="field-label">PIN</label><input class="input" name="pin" inputmode="numeric" required></div>
+          <div class="field"><label class="field-label">Til</label>
+            <select class="select" name="language"><option value="ru">Русский</option><option value="uz">O'zbekcha</option></select></div>
+        </div>
+        <div class="btn-row mt-16"><button class="btn primary" type="submit">{% t 'common.save' %}</button></div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

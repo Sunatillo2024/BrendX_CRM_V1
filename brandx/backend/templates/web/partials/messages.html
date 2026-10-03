@@ -1,0 +1,10 @@
+<div class="toast-host">
+  {% for message in messages %}
+    <div class="toast {% if message.tags %}{{ message.tags }}{% endif %}" data-autohide>
+      <span class="material-icons-round lead">
+        {% if 'success' in message.tags %}check_circle{% elif 'error' in message.tags %}error{% elif 'warning' in message.tags %}warning{% else %}info{% endif %}
+      </span>
+      <span class="toast-msg">{{ message }}</span>
+    </div>
+  {% endfor %}
+</div>

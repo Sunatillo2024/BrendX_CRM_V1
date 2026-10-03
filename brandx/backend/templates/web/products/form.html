@@ -1,0 +1,130 @@
+{% extends 'web/base.html' %}
+{% load static web_extras %}
+{% block title %}{{ page_title }} · {{ BUSINESS_NAME }}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div class="page-title">{{ page_title }}</div>
+  <div class="toolbar">
+    <a class="btn" href="{% url 'web:product-list' %}">
+      <span class="material-icons-round">arrow_back</span>{% t 'common.back' %}
+    </a>
+  </div>
+</div>
+
+<div class="page-body">
+  <form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    <div class="card">
+      <div class="card-title">{% t 'products.title' %}</div>
+      <div class="form-grid">
+        <div class="field"><label class="field-label">{% t 'products.name' %}</label>{{ form.name }}{{ form.name.errors }}</div>
+        <div class="field"><label class="field-label">{% t 'common.category' %}</label>{{ form.category }}</div>
+        <div class="field"><label class="field-label">{% t 'products.barcode' %}</label>
+          <div class="barcode-row">{{ form.barcode }}<button class="btn sm" type="button" id="gen-barcode" title="Avomatik yaratish"><span class="material-icons-round">bolt</span>Avto</button></div>
+          {{ form.barcode.errors }}</div>
+        <div class="field"><label class="field-label">{% t 'products.sellingPrice' %}</label>{{ form.base_selling_price }}</div>
+        {% if brand_user.role == 'owner' %}
+        <div class="field"><label class="field-label">{% t 'products.costPrice' %}</label>{{ form.base_cost_price }}</div>
+        {% endif %}
+        <div class="field"><label class="field-label">{% t 'products.lowStock' %}</label>{{ form.low_stock_threshold }}</div>
+        <div class="field" style="align-self:end"><label class="field-label">{% t 'common.active' %}</label>{{ form.is_active }}</div>
+      </div>
+      <div class="field mt-12"><label class="field-label">{% t 'products.description' %}</label>{{ form.description }}</div>
+    </div>
+
+    <div class="card mt-16">
+      <div class="section-head">
+        <div class="section-title"><span class="material-icons-round">tune</span>{% t 'products.variants' %}</div>
+        <button class="btn sm" type="button" id="add-variant">
+          <span class="material-icons-round">add</span>{% t 'products.addVariant' %}
+        </button>
+      </div>
+      {{ formset.management_form }}
+      <div class="table-wrap">
+        <table class="data" id="variant-table">
+          <thead>
+            <tr>
+              <th>{% t 'common.color' %}</th><th>{% t 'common.size' %}</th>
+              <th>{% t 'products.barcode' %}</th>
+              <th class="num">{% t 'products.sellingPrice' %}</th>
+              {% if brand_user.role == 'owner' %}<th class="num">{% t 'products.costPrice' %}</th>{% endif %}
+              <th class="num">{% t 'products.stock' %}</th>
+              <th>{% t 'common.active' %}</th><th></th>
+            </tr>
+          </thead>
+          <tbody id="variant-rows">
+            {% for vf in formset %}
+              <tr class="variant-row">
+                {{ vf.id }}
+                <td>{{ vf.color }}</td><td>{{ vf.size }}</td><td>{{ vf.barcode }}</td>
+                <td class="num">{{ vf.selling_price }}</td>
+                {% if brand_user.role == 'owner' %}<td class="num">{{ vf.cost_price }}</td>{% endif %}
+                <td class="num">{{ vf.stock_quantity }}</td>
+                <td>{{ vf.is_active }}</td>
+                <td><span class="hidden-delete" style="display:none">{{ vf.DELETE }}</span>
+                  <button class="icon-btn" type="button" data-remove-row><span class="material-icons-round">delete</span></button></td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {{ formset.non_form_errors }}
+    </div>
+
+    <div class="btn-row mt-16">
+      <button class="btn primary" type="submit">{% t 'common.save' %}</button>
+      <a class="btn" href="{% url 'web:product-list' %}">{% t 'common.cancel' %}</a>
+    </div>
+  </form>
+</div>
+
+<template id="empty-row">
+  <tr class="variant-row">
+    <td>{{ formset.empty_form.color }}</td><td>{{ formset.empty_form.size }}</td>
+    <td>{{ formset.empty_form.barcode }}</td>
+    <td class="num">{{ formset.empty_form.selling_price }}</td>
+    {% if brand_user.role == 'owner' %}<td class="num">{{ formset.empty_form.cost_price }}</td>{% endif %}
+    <td class="num">{{ formset.empty_form.stock_quantity }}</td>
+    <td>{{ formset.empty_form.is_active }}</td>
+    <td><button class="icon-btn" type="button" data-remove-row><span class="material-icons-round">delete</span></button></td>
+  </tr>
+</template>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  (function () {
+    var total = document.getElementById('id_variants-TOTAL_FORMS');
+    var prefix = 'variants';
+    var tmpl = document.getElementById('empty-row').innerHTML;
+    document.getElementById('add-variant').addEventListener('click', function () {
+      var index = parseInt(total.value, 10);
+      var row = tmpl.replace(/__prefix__/g, index);
+      document.getElementById('variant-rows').insertAdjacentHTML('beforeend', row);
+      total.value = index + 1;
+    });
+    document.getElementById('variant-table').addEventListener('click', function (e) {
+      var btn = e.target.closest('[data-remove-row]');
+      if (!btn) return;
+      var row = btn.closest('tr');
+      var del = row.querySelector('input[type=checkbox][id$="-DELETE"]');
+      if (del) { del.checked = true; row.style.display = 'none'; }
+      else { row.remove(); }
+    });
+
+    /* One click -> a fresh unused barcode ("Avto"). */
+    var genBtn = document.getElementById('gen-barcode');
+    if (genBtn) {
+      genBtn.addEventListener('click', function () {
+        fetch("{% url 'web:product-barcode-new' %}")
+          .then(function (r) { return r.json(); })
+          .then(function (d) {
+            var input = document.getElementById('{{ form.barcode.id_for_label }}');
+            if (d.barcode && input) { input.value = d.barcode; input.focus(); }
+          });
+      });
+    }
+  })();
+</script>
+{% endblock %}

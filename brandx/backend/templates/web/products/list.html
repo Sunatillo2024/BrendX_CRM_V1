@@ -1,0 +1,103 @@
+{% extends 'web/base.html' %}
+{% load static web_extras %}
+{% block title %}{% t 'products.title' %} · {{ BUSINESS_NAME }}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <div class="page-title">{% t 'products.title' %}</div>
+  </div>
+  <div class="toolbar">
+    <a class="btn primary" href="{% url 'web:product-create' %}">
+      <span class="material-icons-round">add</span>{% t 'products.new' %}
+    </a>
+  </div>
+</div>
+
+<div class="page-body">
+  <div class="card">
+    <form class="toolbar" method="get">
+      <div class="search-box" style="max-width:320px;flex:1">
+        <span class="material-icons-round">search</span>
+        <input type="search" name="q" value="{{ query }}" placeholder="{% t 'common.search' %}">
+      </div>
+      <select class="select" name="category" style="max-width:220px">
+        <option value="">{% t 'common.all' %}</option>
+        {% for c in categories %}
+          <option value="{{ c.pk }}" {% if category_id == c.pk|stringformat:'s' %}selected{% endif %}>{{ c.name }}</option>
+        {% endfor %}
+      </select>
+      <select class="select" name="active" style="max-width:180px">
+        <option value="1" {% if active == '1' %}selected{% endif %}>{% t 'common.active' %}</option>
+        <option value="0" {% if active == '0' %}selected{% endif %}>{% t 'common.inactive' %}</option>
+      </select>
+      <button class="btn" type="submit">{% t 'common.search' %}</button>
+    </form>
+  </div>
+
+  <div class="card pad-0 mt-16">
+    {% if page_obj.object_list %}
+      <div class="table-wrap">
+        <table class="data">
+          <thead>
+            <tr>
+              <th>{% t 'products.name' %}</th>
+              <th>{% t 'products.barcode' %}</th>
+              <th>{% t 'common.category' %}</th>
+              <th class="num">{% t 'products.stock' %}</th>
+              <th class="num">{% t 'products.sellingPrice' %}</th>
+              <th>{% t 'common.status' %}</th>
+              <th class="actions">{% t 'common.actions' %}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for product in page_obj %}
+              <tr>
+                <td>
+                  <div style="display:flex;align-items:center;gap:12px">
+                    {% if product.image %}
+                      <img class="product-thumb" src="{{ product.image.url }}" alt="">
+                    {% else %}
+                      <span class="product-thumb placeholder"><span class="material-icons-round">checkroom</span></span>
+                    {% endif %}
+                    <span class="strong">{{ product.name }}</span>
+                  </div>
+                </td>
+                <td class="muted nowrap">{{ product.barcode }}</td>
+                <td>{{ product.category.name|default:'—' }}</td>
+                <td class="num">{{ product.total_stock }}</td>
+                <td class="num strong">{{ product.base_selling_price|money }}</td>
+                <td>
+                  {% if product.is_active %}<span class="badge success">{% t 'common.active' %}</span>
+                  {% else %}<span class="badge">{% t 'common.inactive' %}</span>{% endif %}
+                </td>
+                <td class="actions">
+                  <div class="btn-row" style="justify-content:flex-end">
+                    <a class="btn sm" href="{% url 'web:product-edit' product.pk %}">
+                      <span class="material-icons-round">edit</span>{% t 'common.edit' %}
+                    </a>
+                    <form method="post" action="{% url 'web:product-delete' product.pk %}">
+                      {% csrf_token %}
+                      <button class="btn sm danger" type="button"
+                              data-confirm="{% t 'products.deactivateTitle' %} ({{ product.name }})">{% t 'common.delete' %}</button>
+                    </form>
+                  </div>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="empty-state">
+        <span class="material-icons-round">inventory_2</span>
+        <h4>{% t 'products.emptyTitle' %}</h4>
+        <p>{% t 'products.emptyHint' %}</p>
+        <a class="btn primary" href="{% url 'web:product-create' %}">{% t 'products.new' %}</a>
+      </div>
+    {% endif %}
+  </div>
+
+  {% include 'web/partials/pagination.html' %}
+</div>
+{% endblock %}

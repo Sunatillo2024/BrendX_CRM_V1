@@ -1,0 +1,188 @@
+{% load i18n %}
+<!DOCTYPE html>
+<html lang="{{ language|default:'uz' }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <title>BrandX — {% if language == 'ru' %}Вход{% else %}Kirish{% endif %}</title>
+  <style>
+    :root {
+      --primary: #4f46e5;
+      --primary-2: #6366f1;
+      --surface: #ffffff;
+      --text: #101828;
+      --muted: #64748b;
+      --border: #e6eaf2;
+      --danger: #dc2626;
+      --danger-soft: #fee2e2;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-height: 100vh; display: flex; align-items: center;
+      justify-content: center; padding: 24px;
+      font-family: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      background: radial-gradient(1200px 600px at 50% -10%, #312e81 0%, #0f172a 55%, #0b0f1a 100%);
+      color: var(--text);
+    }
+    .card {
+      width: 100%; max-width: 380px; background: var(--surface);
+      border-radius: 20px; padding: 32px 28px 26px;
+      box-shadow: 0 24px 60px rgba(2, 6, 23, .5);
+      animation: rise .28s cubic-bezier(.22,.61,.36,1);
+    }
+    @keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+
+    .brand { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; }
+    .logo {
+      width: 42px; height: 42px; border-radius: 12px; flex-shrink: 0;
+      background: linear-gradient(135deg, var(--primary-2), #8b5cf6);
+      color: #fff; font-weight: 800; font-size: 20px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .brand h1 { font-size: 17px; margin: 0; letter-spacing: -.2px; }
+    .brand p { margin: 2px 0 0; font-size: 12px; color: var(--muted); }
+
+    .label { display: block; font-size: 12.5px; font-weight: 600; color: #475569; margin-bottom: 10px; }
+
+    .dots { display: flex; gap: 10px; justify-content: center; min-height: 16px; margin-bottom: 14px; }
+    .dot { width: 13px; height: 13px; border-radius: 50%; background: #e2e8f0; transition: background .15s; }
+    .dot.on { background: var(--primary); }
+
+    .pin-input {
+      position: absolute; opacity: 0; pointer-events: none; width: 0; height: 0;
+    }
+
+    .keypad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    .key {
+      height: 54px; border-radius: 12px; border: 1px solid var(--border);
+      background: #f8fafc; color: var(--text); font-size: 20px; font-weight: 600;
+      cursor: pointer; font-family: inherit; transition: background .12s, transform .08s;
+    }
+    .key:hover { background: #eef2ff; }
+    .key:active { transform: scale(.97); }
+    .key.fn { background: #fff; color: var(--muted); display: flex; align-items: center; justify-content: center; }
+    .key.ok { background: linear-gradient(135deg, var(--primary-2), var(--primary)); color: #fff; border: none; }
+
+    .alert {
+      display: flex; align-items: center; gap: 8px; justify-content: center;
+      background: var(--danger-soft); color: var(--danger);
+      border-radius: 10px; padding: 10px 12px; font-size: 13px; margin-bottom: 14px;
+    }
+
+    .submit {
+      width: 100%; height: 48px; margin-top: 16px; border: none; border-radius: 12px;
+      background: var(--primary); color: #fff; font-size: 15px; font-weight: 700;
+      cursor: pointer; font-family: inherit;
+    }
+    .submit:hover { background: #4338ca; }
+    .footer { margin-top: 16px; text-align: center; font-size: 11.5px; color: var(--muted); }
+  </style>
+</head>
+<body>
+  <form class="card" method="post" action="{% url 'admin-pin-login' %}" id="pin-form">
+    {% csrf_token %}
+    <input type="hidden" name="next" value="{{ next }}">
+
+    <div class="brand">
+      <div class="logo">B</div>
+      <div>
+        <h1>BrandX</h1>
+        <p>{% if language == 'ru' %}Панель управления{% else %}Boshqaruv paneli{% endif %}</p>
+      </div>
+    </div>
+
+    <label class="label" for="pin">
+      {% if language == 'ru' %}Введите PIN-код{% else %}PIN kodni kiriting{% endif %}
+    </label>
+
+    <input class="pin-input" id="pin" name="pin" inputmode="numeric" autocomplete="off"
+           maxlength="8" autofocus>
+
+    <div class="dots" id="dots"></div>
+
+    {% if error == 'locked' %}
+      <div class="alert">
+        {% if language == 'ru' %}
+          Слишком много попыток. Повторите через {{ retry_after }} сек.
+        {% else %}
+          Juda ko‘p urinish. {{ retry_after }} soniyadan so‘ng qayta urinib ko‘ring.
+        {% endif %}
+      </div>
+    {% elif error == 'wrong' %}
+      <div class="alert">
+        {% if language == 'ru' %}Неверный PIN-код{% else %}PIN kod noto‘g‘ri{% endif %}
+        {% if attempts_left is not None %}
+          ({% if language == 'ru' %}осталось{% else %}qoldi{% endif %}: {{ attempts_left }})
+        {% endif %}
+      </div>
+    {% elif error == 'empty' %}
+      <div class="alert">
+        {% if language == 'ru' %}Введите PIN-код{% else %}PIN kodni kiriting{% endif %}
+      </div>
+    {% endif %}
+
+    <div class="keypad">
+      <button type="button" class="key" data-k="1">1</button>
+      <button type="button" class="key" data-k="2">2</button>
+      <button type="button" class="key" data-k="3">3</button>
+      <button type="button" class="key" data-k="4">4</button>
+      <button type="button" class="key" data-k="5">5</button>
+      <button type="button" class="key" data-k="6">6</button>
+      <button type="button" class="key" data-k="7">7</button>
+      <button type="button" class="key" data-k="8">8</button>
+      <button type="button" class="key" data-k="9">9</button>
+      <button type="button" class="key fn" data-del="1">&#9003;</button>
+      <button type="button" class="key" data-k="0">0</button>
+      <button type="button" class="key ok" data-ok="1">&#9166;</button>
+    </div>
+
+    <button type="submit" class="submit">
+      {% if language == 'ru' %}Войти{% else %}Kirish{% endif %}
+    </button>
+
+    <div class="footer">BrandX POS</div>
+  </form>
+
+  <script>
+    (function () {
+      var input = document.getElementById('pin');
+      var dots = document.getElementById('dots');
+      var form = document.getElementById('pin-form');
+
+      function render() {
+        var len = Math.max(4, input.value.length);
+        dots.innerHTML = '';
+        for (var i = 0; i < len; i++) {
+          var d = document.createElement('span');
+          d.className = 'dot' + (i < input.value.length ? ' on' : '');
+          dots.appendChild(d);
+        }
+      }
+
+      function append(k) {
+        if (input.value.length < 8) { input.value += k; render(); }
+      }
+
+      document.querySelectorAll('.key[data-k]').forEach(function (b) {
+        b.addEventListener('click', function () { append(b.dataset.k); });
+      });
+      document.querySelector('.key[data-del]').addEventListener('click', function () {
+        input.value = input.value.slice(0, -1); render();
+      });
+      document.querySelector('.key[data-ok]').addEventListener('click', function () {
+        if (input.value.length >= 4) form.submit();
+      });
+
+      document.addEventListener('keydown', function (e) {
+        if (/^[0-9]$/.test(e.key)) { append(e.key); }
+        else if (e.key === 'Backspace') { input.value = input.value.slice(0, -1); render(); }
+      });
+
+      input.addEventListener('input', render);
+      input.focus();
+      render();
+    })();
+  </script>
+</body>
+</html>

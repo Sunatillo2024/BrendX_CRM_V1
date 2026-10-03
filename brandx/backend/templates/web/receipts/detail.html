@@ -1,0 +1,50 @@
+{% extends 'web/base.html' %}
+{% load static web_extras %}
+{% block title %}{% t 'receipts.detail' %} · {{ BUSINESS_NAME }}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div class="page-title">{% t 'receipts.detail' %} №{{ receipt.number }}</div>
+  <a class="btn" href="{% url 'web:receipts' %}"><span class="material-icons-round">arrow_back</span>{% t 'common.back' %}</a>
+</div>
+
+<div class="page-body">
+  <div class="card">
+    <div class="grid grid-3">
+      <div><div class="stat-label">{% t 'common.date' %}</div><div class="strong">{{ receipt.receipt_date|date:'d.m.Y' }}</div></div>
+      <div><div class="stat-label">{% t 'receipts.vendor' %}</div><div class="strong">{{ receipt.vendor.name|default:'—' }}</div></div>
+      <div><div class="stat-label">{% t 'receipts.createdBy' %}</div><div class="strong">{{ receipt.created_by.display_name|default:'—' }}</div></div>
+    </div>
+  </div>
+
+  <div class="card pad-0 mt-16">
+    <div class="table-wrap">
+      <table class="data">
+        <thead><tr>
+          <th>{% t 'common.product' %}</th><th>{% t 'common.color' %}</th><th>{% t 'common.size' %}</th>
+          <th class="num">{% t 'common.quantity' %}</th><th class="num">{% t 'products.costPrice' %}</th>
+          <th class="num">{% t 'common.sum' %}</th>
+        </tr></thead>
+        <tbody>
+          {% for item in receipt.items.all %}
+            <tr>
+              <td class="strong">{{ item.product_variant.product.name }}</td>
+              <td>{{ item.product_variant.color.name|default:'—' }}</td>
+              <td>{{ item.product_variant.size.name|default:'—' }}</td>
+              <td class="num">{{ item.quantity }}</td>
+              <td class="num">{{ item.cost_price|money }}</td>
+              <td class="num strong">{{ item.total_cost|money }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+        <tfoot><tr>
+          <td colspan="3" class="strong">{% t 'common.total' %}</td>
+          <td class="num strong">{{ receipt.total_quantity }}</td>
+          <td></td>
+          <td class="num strong">{{ receipt.total_cost|money }}</td>
+        </tr></tfoot>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

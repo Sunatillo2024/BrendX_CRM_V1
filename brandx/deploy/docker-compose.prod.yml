@@ -1,0 +1,100 @@
+# ===========================================================================
+# BrandX - production Docker Compose stack.
+#
+# Conflict-avoidance with other services on the host (e.g. a Telegram bot):
+#   * dedicated Docker network  -> its own DNS, nothing shared
+#   * PostgreSQL                -> NOT published to the host at all
+#   * only the Django container -> published, and by default on LOOPBACK
+#                                  (127.0.0.1) on a free, configurable port
+#
+# Usage (from the repository root):
+#   docker compose -f deploy/docker-compose.prod.yml --env-file deploy/.env.prod up -d
+#
+# NOTE: the project is named `brandx-prod` (not `brandx`) so its containers,
+# volumes and network can never collide with a local/dev BrandX stack.
+# ===========================================================================
+name: brandx-prod
+
+services:
+  # -------------------------------------------------------------------------
+  # PostgreSQL 17 - reachable only from other containers on brandx_prod_network.
+  # -------------------------------------------------------------------------
+  postgres:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:?Set DB_NAME in deploy/.env.prod}
+      POSTGRES_USER: ${DB_USER:?Set DB_USER in deploy/.env.prod}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in deploy/.env.prod}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    # No `ports:` on purpose: the database must never be exposed on the host.
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # -------------------------------------------------------------------------
+  # Django + Gunicorn - the only published container. Whitenoise serves the
+  # static files and Django serves /media/ (no separate nginx container).
+  # Default bind is 127.0.0.1 so it stays private; put a host reverse proxy
+  # (or set BRANDX_HTTP_BIND=0.0.0.0) in front to reach it from outside.
+  # -------------------------------------------------------------------------
+  backend:
+    image: brandx-backend:prod
+    build:
+      context: ../backend
+      dockerfile: Dockerfile.prod
+    restart: unless-stopped
+    env_file:
+      - .env.prod
+    environment:
+      # Force-internal values; these always win over deploy/.env.prod.
+      DB_ENGINE: django.db.backends.postgresql
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DEBUG: ${DEBUG:-False}
+      GUNICORN_WORKERS: ${GUNICORN_WORKERS:-3}
+      GUNICORN_TIMEOUT: ${GUNICORN_TIMEOUT:-120}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "${BRANDX_HTTP_BIND:-127.0.0.1}:${BRANDX_HTTP_PORT:-8080}:8000"
+    volumes:
+      - media_data:/app/media
+    stop_grace_period: 30s
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8000/health/ >/dev/null || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+# ---------------------------------------------------------------------------
+# Named resources use a `brandx-prod` prefix so they can NEVER collide with a
+# dev/local BrandX stack (which owns `brandx_postgres_data` / `brandx_media_data`)
+# nor with the Telegram bot.
+# ---------------------------------------------------------------------------
+volumes:
+  postgres_data:
+    name: brandx_prod_postgres_data
+  media_data:
+    name: brandx_prod_media_data
+
+networks:
+  default:
+    name: brandx_prod_network
+    driver: bridge

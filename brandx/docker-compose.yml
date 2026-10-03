@@ -1,0 +1,80 @@
+services:
+  # Retained unchanged as migration source; never reuse mysql_data for PostgreSQL.
+  db:
+    profiles: [legacy-mysql]
+    image: mysql:8.0
+    container_name: brandx-db
+    restart: unless-stopped
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    environment:
+      MYSQL_DATABASE: ${DB_NAME:-brandx}
+      MYSQL_USER: ${DB_USER:-brandx}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-brandx}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-brandx_root}
+    volumes:
+      - mysql_data:/var/lib/mysql
+    ports:
+      - "${DB_EXPOSED_PORT:-3307}:3306"
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+
+  postgres:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:?Set DB_NAME}
+      POSTGRES_USER: ${DB_USER:?Set DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:${POSTGRES_EXPOSED_PORT:-5433}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
+
+  # Django serves the whole server-rendered UI (session auth, PIN login).
+  # No frontend container exists anymore — one container, one web app.
+  backend:
+    build: ./backend
+    container_name: brandx-backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      SECRET_KEY: ${SECRET_KEY:-django-insecure-brandx-docker-change-in-production}
+      DEBUG: ${DEBUG:-True}
+      ALLOWED_HOSTS: "${ALLOWED_HOSTS:-*}"
+      DB_ENGINE: django.db.backends.postgresql
+      DB_NAME: ${DB_NAME:?Set DB_NAME}
+      DB_USER: ${DB_USER:?Set DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD}
+      DB_HOST: ${DB_HOST:-postgres}
+      DB_PORT: ${DB_PORT:-5432}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      CURRENCY_CODE: ${CURRENCY_CODE:-KGS}
+      CURRENCY_SYMBOL: ${CURRENCY_SYMBOL:-сом}
+      CURRENCY_LOCALE: ${CURRENCY_LOCALE:-ky-KG}
+      BOOTSTRAP_ADMIN: ${BOOTSTRAP_ADMIN:-false}
+      DJANGO_ADMIN_USERNAME: ${DJANGO_ADMIN_USERNAME:-}
+      DJANGO_ADMIN_PASSWORD: ${DJANGO_ADMIN_PASSWORD:-}
+      DJANGO_ADMIN_PIN: ${DJANGO_ADMIN_PIN:-}
+      SEED_DATA: ${SEED_DATA:-false}
+      GUNICORN_WORKERS: ${GUNICORN_WORKERS:-3}
+    volumes:
+      - media_data:/app/media
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+
+volumes:
+  mysql_data:
+  postgres_data:
+  media_data:

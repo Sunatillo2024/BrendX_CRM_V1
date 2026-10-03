@@ -1,0 +1,174 @@
+{% extends 'web/base.html' %}
+{% load static web_extras %}
+{% block title %}{% t 'stock.title' %} · {{ BUSINESS_NAME }}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div class="page-title">{% t 'stock.title' %}</div>
+  <button class="btn primary" type="button" data-open-adjust>
+    <span class="material-icons-round">tune</span>{% t 'stock.inventoryCount' %}
+  </button>
+</div>
+
+<div class="page-body">
+  <div class="grid grid-4">
+    <div class="stat">
+      <div class="stat-row"><span class="stat-label">{% t 'stock.costValue' %}</span>
+        <div class="stat-icon"><span class="material-icons-round">inventory_2</span></div></div>
+      <div class="stat-value">{{ valuation.cost_value|money }} {{ CURRENCY_SYMBOL }}</div>
+    </div>
+    <div class="stat">
+      <div class="stat-row"><span class="stat-label">{% t 'stock.retailValue' %}</span>
+        <div class="stat-icon info"><span class="material-icons-round">sell</span></div></div>
+      <div class="stat-value">{{ valuation.retail_value|money }} {{ CURRENCY_SYMBOL }}</div>
+    </div>
+    <div class="stat">
+      <div class="stat-row"><span class="stat-label">{% t 'stock.potentialProfit' %}</span>
+        <div class="stat-icon success"><span class="material-icons-round">trending_up</span></div></div>
+      <div class="stat-value positive">{{ valuation.potential_profit|money }}</div>
+    </div>
+    <div class="stat">
+      <div class="stat-row"><span class="stat-label">{% t 'dashboard.unitsSold' %}</span>
+        <div class="stat-icon warn"><span class="material-icons-round">numbers</span></div></div>
+      <div class="stat-value">{{ valuation.units_in_stock }}</div>
+    </div>
+  </div>
+
+  <div class="card pad-0 mt-16">
+    <div class="section-head" style="padding:18px 20px 0">
+      <div class="section-title"><span class="material-icons-round">history</span>{% t 'stock.movements' %}</div>
+    </div>
+    {% if movements %}
+      <div class="table-wrap">
+        <table class="data">
+          <thead><tr>
+            <th>{% t 'common.date' %}</th><th>{% t 'stock.variant' %}</th>
+            <th>{% t 'finance.type' %}</th>
+            <th class="num">{% t 'stock.before' %}</th><th class="num">{% t 'stock.change' %}</th>
+            <th class="num">{% t 'stock.after' %}</th>
+            <th>{% t 'stock.reason' %}</th><th>{% t 'common.employee' %}</th>
+          </tr></thead>
+          <tbody>
+            {% for m in movements %}
+              <tr>
+                <td class="muted nowrap">{{ m.created_at|date:'d.m.Y H:i' }}</td>
+                <td>{{ m.product_variant }}</td>
+                <td><span class="badge info">{% tenum 'stock.type' m.movement_type %}</span></td>
+                <td class="num">{{ m.quantity_before }}</td>
+                <td class="num {% if m.quantity_change < 0 %}negative{% else %}positive{% endif %}">
+                  {% if m.quantity_change > 0 %}+{% endif %}{{ m.quantity_change }}</td>
+                <td class="num strong">{{ m.quantity_after }}</td>
+                <td class="muted">{{ m.reason }}</td>
+                <td class="muted">{{ m.created_by.display_name|default:'—' }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}<div class="empty">{% t 'common.noData' %}</div>{% endif %}
+  </div>
+</div>
+
+<div class="drawer-backdrop" id="adjust-drawer" hidden>
+  <div class="drawer">
+    <form method="post" action="{% url 'web:stock-adjust' %}">
+      {% csrf_token %}
+      <div class="drawer-head"><h3>{% t 'stock.inventoryCount' %}</h3>
+        <button class="icon-btn" type="button" data-close-drawer><span class="material-icons-round">close</span></button></div>
+      <div class="drawer-body">
+        <div class="field"><label class="field-label">{% t 'stock.variant' %}</label>
+          <div class="search-box"><span class="material-icons-round">search</span>
+            <input type="text" id="variant-search" placeholder="{% t 'common.search' %}" autocomplete="off"></div>
+          <input type="hidden" name="variant_id" id="variant-id">
+          <div id="variant-results" class="menu" hidden style="width:100%;position:static;margin-top:6px"></div>
+        </div>
+        <div class="field mt-12"><label class="field-label">{% t 'finance.type' %}</label>
+          <select class="select" name="mode">
+            <option value="counted">{% t 'stock.countedQuantity' %}</option>
+            <option value="delta">{% t 'stock.change' %} (+/-)</option>
+          </select></div>
+        <div class="field mt-12"><label class="field-label">{% t 'common.quantity' %}</label>
+          <input class="input" name="quantity" inputmode="numeric" value="0"></div>
+        <div class="field mt-12"><label class="field-label">{% t 'stock.reason' %}</label>
+          <select class="select" name="reason">
+            <option value="inventory">{% t 'stock.type.inventory' %}</option>
+            <option value="damage">Damage</option>
+            <option value="loss">Loss</option>
+            <option value="correction">Correction</option>
+            <option value="other">Other</option>
+          </select></div>
+        <div class="field mt-12"><label class="field-label">{% t 'finance.comment' %}</label>
+          <textarea class="textarea" name="notes" rows="2"></textarea></div>
+      </div>
+      <div class="drawer-foot">
+        <button class="btn" type="button" data-close-drawer>{% t 'common.cancel' %}</button>
+        <button class="btn primary" type="submit">{% t 'stock.apply' %}</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  (function () {
+    var drawer = document.getElementById('adjust-drawer');
+    function open() { drawer.hidden = false; }
+    function close() { drawer.hidden = true; }
+    document.querySelectorAll('[data-open-adjust]').forEach(function (b) { b.addEventListener('click', open); });
+    drawer.querySelectorAll('[data-close-drawer]').forEach(function (b) { b.addEventListener('click', close); });
+
+    var timer = null;
+    var search = document.getElementById('variant-search');
+    var results = document.getElementById('variant-results');
+
+    function pick(v) {
+      document.getElementById('variant-id').value = v.id;
+      search.value = v.product_name + (v.color_name ? ' · ' + v.color_name : '') +
+        (v.size_name ? ' · ' + v.size_name : '');
+      results.hidden = true;
+    }
+
+    function runSearch(auto) {
+      var q = search.value.trim();
+      if (!q) { results.hidden = true; return; }
+      fetch("{% url 'web:pos-search' %}?q=" + encodeURIComponent(q) + "&limit=10")
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          var rows = data.results || [];
+          results.innerHTML = '';
+          rows.forEach(function (v) {
+            var btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'menu-item';
+            btn.textContent = v.product_name + (v.color_name ? ' · ' + v.color_name : '') +
+              (v.size_name ? ' · ' + v.size_name : '') + ' (' + v.stock_quantity + ')';
+            btn.addEventListener('click', function () { pick(v); });
+            results.appendChild(btn);
+          });
+          /* Barcode scanners send code + Enter: a unique hit is selected
+             automatically instead of asking for a second click. */
+          if (auto && rows.length === 1) { pick(rows[0]); return; }
+          results.hidden = !rows.length;
+        });
+    }
+
+    search.addEventListener('input', function () {
+      clearTimeout(timer);
+      timer = setTimeout(function () { runSearch(false); }, 220);
+    });
+    /* Enter must filter/select a variant - never submit the drawer form. */
+    search.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') { e.preventDefault(); clearTimeout(timer); runSearch(true); }
+    });
+    /* Applying without a picked variant must not reach the server. */
+    drawer.querySelector('form').addEventListener('submit', function (e) {
+      if (!document.getElementById('variant-id').value) {
+        e.preventDefault();
+        if (window.BrandX) BrandX.toast(BrandX.t('stock.selectVariant'), 'warn');
+        search.focus();
+      }
+    });
+  })();
+</script>
+{% endblock %}

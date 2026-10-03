@@ -1,0 +1,99 @@
+{% extends 'web/base.html' %}
+{% load static web_extras %}
+{% block title %}{% t 'reports.title' %} · {{ BUSINESS_NAME }}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <div class="page-title">{% t 'reports.title' %}</div>
+    <div class="page-sub">{{ date_from }} — {{ date_to }}</div>
+  </div>
+  <div class="period-bar">
+    <a class="period-btn {% if period == 'today' %}active{% endif %}" href="?period=today">{% t 'common.today' %}</a>
+    <a class="period-btn {% if period == 'week' %}active{% endif %}" href="?period=week">{% t 'common.week' %}</a>
+    <a class="period-btn {% if period == 'month' %}active{% endif %}" href="?period=month">{% t 'common.month' %}</a>
+    <a class="period-btn {% if period == 'all' %}active{% endif %}" href="?period=all">{% t 'common.all' %}</a>
+  </div>
+</div>
+
+<div class="page-body">
+  <div class="grid grid-4">
+    <div class="stat"><div class="stat-label">{% t 'dashboard.revenue' %}</div>
+      <div class="stat-value accent">{{ operational.revenue|money }}</div></div>
+    <div class="stat"><div class="stat-label">{% t 'dashboard.salesCount' %}</div>
+      <div class="stat-value">{{ operational.sales_count }}</div></div>
+    <div class="stat"><div class="stat-label">{% t 'dashboard.unitsSold' %}</div>
+      <div class="stat-value">{{ operational.units_sold }}</div></div>
+    <div class="stat"><div class="stat-label">{% t 'dashboard.averageCheck' %}</div>
+      <div class="stat-value">{{ operational.average_check|money }}</div></div>
+  </div>
+
+  {% if can_view_financials %}
+  <div class="card mt-16">
+    <div class="card-title">{% t 'reports.financial' %}</div>
+    <div class="grid grid-4">
+      <div><div class="stat-label">{% t 'profit.cost' %}</div><div class="stat-value">{{ financial.cost_of_goods|money }}</div></div>
+      <div><div class="stat-label">{% t 'profit.grossProfit' %}</div><div class="stat-value">{{ financial.gross_profit|money }}</div></div>
+      <div><div class="stat-label">{% t 'profit.expenses' %}</div><div class="stat-value negative">{{ financial.expenses|money }}</div></div>
+      <div><div class="stat-label">{% t 'profit.netProfit' %}</div>
+        <div class="stat-value {% if financial.net_profit >= 0 %}positive{% else %}negative{% endif %}">{{ financial.net_profit|money }}</div></div>
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="card mt-16">
+    <div class="card-title">{% t 'dashboard.topProducts' %}</div>
+    {% if top_products %}
+      <table class="data">
+        <thead><tr><th>{% t 'common.product' %}</th><th class="num">{% t 'common.quantity' %}</th><th class="num">{% t 'common.sum' %}</th></tr></thead>
+        <tbody>{% for row in top_products %}
+          <tr><td class="strong">{{ row.product_name }}</td><td class="num">{{ row.units }}</td><td class="num">{{ row.revenue|money }}</td></tr>
+        {% endfor %}</tbody>
+      </table>
+    {% else %}<div class="empty">{% t 'dashboard.noSales' %}</div>{% endif %}
+  </div>
+
+  <div class="card mt-16">
+    <div class="card-title">{% t 'common.export' %}</div>
+    <div class="grid grid-2">
+      <div class="between">
+        <span>{% t 'reports.sales' %}</span>
+        <div class="btn-row">
+          <a class="btn sm" href="{% url 'web:report-export' 'sales' %}?{{ query_string }}&fmt=xlsx&lang={{ brand_lang }}">{% t 'common.excel' %}</a>
+          <a class="btn sm" href="{% url 'web:report-export' 'sales' %}?{{ query_string }}&fmt=csv&lang={{ brand_lang }}">{% t 'common.csv' %}</a>
+        </div>
+      </div>
+      <div class="between">
+        <span>{% t 'reports.stock' %}</span>
+        <div class="btn-row">
+          <a class="btn sm" href="{% url 'web:report-export' 'stock' %}?fmt=xlsx&lang={{ brand_lang }}">{% t 'common.excel' %}</a>
+          <a class="btn sm" href="{% url 'web:report-export' 'stock' %}?fmt=csv&lang={{ brand_lang }}">{% t 'common.csv' %}</a>
+        </div>
+      </div>
+      <div class="between">
+        <span>{% t 'reports.receipts' %}</span>
+        <div class="btn-row">
+          <a class="btn sm" href="{% url 'web:report-export' 'receipts' %}?{{ query_string }}&fmt=xlsx&lang={{ brand_lang }}">{% t 'common.excel' %}</a>
+          <a class="btn sm" href="{% url 'web:report-export' 'receipts' %}?{{ query_string }}&fmt=csv&lang={{ brand_lang }}">{% t 'common.csv' %}</a>
+        </div>
+      </div>
+      <div class="between">
+        <span>{% t 'reports.finance' %}</span>
+        <div class="btn-row">
+          <a class="btn sm" href="{% url 'web:report-export' 'finance' %}?{{ query_string }}&fmt=xlsx&lang={{ brand_lang }}">{% t 'common.excel' %}</a>
+          <a class="btn sm" href="{% url 'web:report-export' 'finance' %}?{{ query_string }}&fmt=csv&lang={{ brand_lang }}">{% t 'common.csv' %}</a>
+        </div>
+      </div>
+      {% if can_view_financials %}
+      <div class="between">
+        <span>{% t 'reports.financial' %}</span>
+        <div class="btn-row">
+          <a class="btn sm" href="{% url 'web:report-export' 'financial-summary' %}?{{ query_string }}&fmt=xlsx&lang={{ brand_lang }}">{% t 'common.excel' %}</a>
+          <a class="btn sm" href="{% url 'web:report-export' 'financial-summary' %}?{{ query_string }}&fmt=csv&lang={{ brand_lang }}">{% t 'common.csv' %}</a>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}
