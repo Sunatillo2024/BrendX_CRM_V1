@@ -13,7 +13,7 @@
 </div>
 
 <div class="page-body">
-  <form method="post" enctype="multipart/form-data">
+  <form method="post" enctype="multipart/form-data" id="product-form">
     {% csrf_token %}
     <div class="card">
       <div class="card-title">{% t 'products.title' %}</div>
@@ -95,6 +95,18 @@
 {% block scripts %}
 <script>
   (function () {
+    /* Barcode scanners send an Enter keystroke right after the code.
+       Inside a text input that Enter would instantly submit this form
+       mid-edit, so Enter from inputs never submits — "Save" stays
+       click-only. */
+    document.getElementById('product-form').addEventListener('keydown', function (e) {
+      if (e.key !== 'Enter' && e.keyCode !== 13) return;
+      var t = e.target;
+      if (t && t.tagName === 'INPUT' && t.type !== 'submit' && t.type !== 'button') {
+        e.preventDefault();
+      }
+    });
+
     var total = document.getElementById('id_variants-TOTAL_FORMS');
     var prefix = 'variants';
     var tmpl = document.getElementById('empty-row').innerHTML;
