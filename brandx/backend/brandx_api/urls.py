@@ -11,6 +11,13 @@ admin.site.site_header = 'BrandX'
 admin.site.site_title = 'BrandX'
 admin.site.index_title = 'Boshqaruv'
 
+# Brand-styled error pages (self-contained: they render even when the DB or
+# static files are down).
+handler400 = 'apps.web.views.errors.bad_request'
+handler403 = 'apps.web.views.errors.permission_denied'
+handler404 = 'apps.web.views.errors.page_not_found'
+handler500 = 'apps.web.views.errors.server_error'
+
 urlpatterns = [
     # PIN login for the admin (must come before admin.site.urls so it wins).
     path('admin/login/', PinAdminLoginView.as_view(), name='admin-pin-login'),

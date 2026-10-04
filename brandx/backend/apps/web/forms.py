@@ -11,6 +11,12 @@ from apps.authentication.models import User
 from apps.finance.models import FinanceEntry
 from apps.products.models import Category, Product, ProductVariant
 
+# Shown when a scanned/typed barcode is already used by another product or
+# variant in the same store (DB enforces product_store_barcode / variant_store_barcode).
+DUPLICATE_BARCODE_MSG = ('Bu shtrih kod allaqachon boshqa tovarda mavjud — boshqa kod kiriting '
+                         'yoki "Avto" tugmasini bosing. (Этот штрих-код уже используется другим '
+                         'товаром — введите другой.)')
+
 
 class CategoryForm(forms.ModelForm):
     class Meta:
@@ -39,6 +45,7 @@ class ProductForm(forms.ModelForm):
 
     def __init__(self, *args, store=None, **kwargs):
         super().__init__(*args, **kwargs)
+        self.store = store
         if store is not None:
             self.fields['category'].queryset = Category.objects.filter(store=store, is_active=True)
         self.fields['category'].required = False
@@ -58,6 +65,19 @@ class ProductForm(forms.ModelForm):
     def clean_low_stock_threshold(self):
         value = self.cleaned_data.get('low_stock_threshold')
         return value if value not in (None, '') else 5
+
+    def clean_barcode(self):
+        """Per-store barcode uniqueness: a friendly form error instead of a 500
+        from the product_store_barcode constraint on save."""
+        barcode = (self.cleaned_data.get('barcode') or '').strip()
+        if not barcode or self.store is None:
+            return barcode
+        qs = Product.objects.filter(store=self.store, barcode=barcode)
+        if self.instance.pk:
+            qs = qs.exclude(pk=self.instance.pk)
+        if qs.exists():
+            raise forms.ValidationError(DUPLICATE_BARCODE_MSG)
+        return barcode
 
 
 class VariantForm(forms.ModelForm):
@@ -79,6 +99,7 @@ class VariantForm(forms.ModelForm):
 
     def __init__(self, *args, store=None, product=None, **kwargs):
         super().__init__(*args, **kwargs)
+        self.store = store
         from apps.products.models import Color, Size
         if store is not None:
             self.fields['color'].queryset = Color.objects.filter(store=store)
@@ -93,6 +114,37 @@ class VariantForm(forms.ModelForm):
     def clean_low_stock_threshold(self):
         value = self.cleaned_data.get('low_stock_threshold')
         return value if value not in (None, '') else 5
+
+    def clean_barcode(self):
+        """Same guard as ProductForm: variant_store_barcode must not blow up
+        with a 500 when a scanned barcode is already taken in this store."""
+        barcode = (self.cleaned_data.get('barcode') or '').strip()
+        if not barcode or self.store is None:
+            return barcode
+        qs = ProductVariant.objects.filter(store=self.store, barcode=barcode)
+        if self.instance.pk:
+            qs = qs.exclude(pk=self.instance.pk)
+        if qs.exists():
+            raise forms.ValidationError(DUPLICATE_BARCODE_MSG)
+        return barcode
+
+
+class VariantFormSetBase(forms.BaseInlineFormSet):
+    """Cross-row guard: two visible rows of one formset may not share a barcode
+    (each row alone passes its DB check, then the second INSERT would 500)."""
+
+    def clean(self):
+        super().clean()
+        seen = set()
+        for form in self.forms:
+            if not getattr(form, 'cleaned_data', None) or form.cleaned_data.get('DELETE'):
+                continue
+            code = (form.cleaned_data.get('barcode') or '').strip()
+            if not code:
+                continue
+            if code in seen:
+                raise forms.ValidationError(DUPLICATE_BARCODE_MSG)
+            seen.add(code)
 
 
 class FinanceForm(forms.ModelForm):

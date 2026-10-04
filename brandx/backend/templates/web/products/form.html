@@ -57,10 +57,10 @@
             {% for vf in formset %}
               <tr class="variant-row">
                 {{ vf.id }}
-                <td>{{ vf.color }}</td><td>{{ vf.size }}</td><td>{{ vf.barcode }}</td>
+                <td>{{ vf.color }}</td><td>{{ vf.size }}</td><td>{{ vf.barcode }}{{ vf.barcode.errors }}</td>
                 <td class="num">{{ vf.selling_price }}</td>
                 {% if brand_user.role == 'owner' %}<td class="num">{{ vf.cost_price }}</td>{% endif %}
-                <td class="num">{{ vf.stock_quantity }}</td>
+                <td class="num">{{ vf.stock_quantity }}{{ vf.stock_quantity.errors }}</td>
                 <td>{{ vf.is_active }}</td>
                 <td><span class="hidden-delete" style="display:none">{{ vf.DELETE }}</span>
                   <button class="icon-btn" type="button" data-remove-row><span class="material-icons-round">delete</span></button></td>
@@ -96,14 +96,31 @@
 <script>
   (function () {
     /* Barcode scanners send an Enter keystroke right after the code.
-       Inside a text input that Enter would instantly submit this form
-       mid-edit, so Enter from inputs never submits — "Save" stays
-       click-only. */
-    document.getElementById('product-form').addEventListener('keydown', function (e) {
+       Enter in a barcode field = scan finished -> SAVE the form.
+       Enter in any other input just moves to the next field, so an
+       accidental Enter mid-edit never submits the form. */
+    var form = document.getElementById('product-form');
+    var isBarcodeInput = function (t) {
+      return t.id === 'id_barcode' || /-barcode$/.test(t.id || '');
+    };
+    form.addEventListener('keydown', function (e) {
       if (e.key !== 'Enter' && e.keyCode !== 13) return;
       var t = e.target;
-      if (t && t.tagName === 'INPUT' && t.type !== 'submit' && t.type !== 'button') {
-        e.preventDefault();
+      if (!t || t.tagName !== 'INPUT' || t.type === 'submit' || t.type === 'button') return;
+      e.preventDefault();
+      if (isBarcodeInput(t)) {
+        /* requestSubmit runs HTML5 validation first: a missing required
+           field shows its message instead of silently doing nothing. */
+        if (typeof form.requestSubmit === 'function') form.requestSubmit();
+        else form.submit();
+      } else {
+        /* Move focus forward like Tab would. */
+        var fields = Array.prototype.filter.call(
+          form.querySelectorAll('input, select, textarea'),
+          function (el) { return !el.disabled && el.type !== 'hidden' && el.offsetParent !== null; }
+        );
+        var next = fields[fields.indexOf(t) + 1];
+        if (next) next.focus();
       }
     });
 

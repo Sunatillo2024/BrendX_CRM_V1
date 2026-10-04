@@ -97,6 +97,87 @@ class WebPageTests(TestCase):
         product = Product.objects.get(name='Manager Item')
         self.assertEqual(product.base_cost_price, 0)
 
+    def test_product_create_duplicate_barcode_shows_error(self):
+        """A scanned barcode that already exists must show a form error, not a 500."""
+        self.login()
+        response = self.client.post(reverse('web:product-create'), {
+            'name': 'Dup', 'barcode': '2000000000017',
+            'base_selling_price': '150', 'is_active': 'on',
+            'variants-TOTAL_FORMS': '1', 'variants-INITIAL_FORMS': '0',
+            'variants-MIN_NUM_FORMS': '0', 'variants-MAX_NUM_FORMS': '1000',
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'allaqachon')
+        self.assertFalse(Product.objects.filter(name='Dup').exists())
+
+    def test_variant_duplicate_barcode_shows_error(self):
+        """A variant row reusing another variant's barcode must not 500."""
+        self.login()
+        response = self.client.post(reverse('web:product-create'), {
+            'name': 'Var Dup', 'base_selling_price': '150', 'is_active': 'on',
+            'variants-TOTAL_FORMS': '1', 'variants-INITIAL_FORMS': '0',
+            'variants-MIN_NUM_FORMS': '0', 'variants-MAX_NUM_FORMS': '1000',
+            'variants-0-barcode': '2000000000024', 'variants-0-stock_quantity': '3',
+            'variants-0-is_active': 'on',
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'allaqachon')
+        self.assertFalse(Product.objects.filter(name='Var Dup').exists())
+
+    def test_variant_rows_same_barcode_shows_error(self):
+        """Two rows with the same barcode -> formset error, not a 500."""
+        self.login()
+        response = self.client.post(reverse('web:product-create'), {
+            'name': 'Row Dup', 'base_selling_price': '150', 'is_active': 'on',
+            'variants-TOTAL_FORMS': '2', 'variants-INITIAL_FORMS': '0',
+            'variants-MIN_NUM_FORMS': '0', 'variants-MAX_NUM_FORMS': '1000',
+            'variants-0-barcode': '2100000000017', 'variants-0-stock_quantity': '3',
+            'variants-0-is_active': 'on',
+            'variants-1-barcode': '2100000000017', 'variants-1-stock_quantity': '3',
+            'variants-1-is_active': 'on',
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'allaqachon')
+        self.assertFalse(Product.objects.filter(name='Row Dup').exists())
+
+    def test_product_edit_keep_own_barcode(self):
+        """Editing a product without touching its barcode must still save."""
+        self.login()
+        variant = self.product.variants.get()
+        response = self.client.post(reverse('web:product-edit', kwargs={'pk': self.product.pk}), {
+            'name': 'Shirt Renamed', 'barcode': '2000000000017',
+            'base_selling_price': '120', 'is_active': 'on',
+            'variants-TOTAL_FORMS': '1', 'variants-INITIAL_FORMS': '1',
+            'variants-MIN_NUM_FORMS': '0', 'variants-MAX_NUM_FORMS': '1000',
+            'variants-0-id': str(variant.pk),
+            'variants-0-barcode': '2000000000024',
+            'variants-0-stock_quantity': '5',
+            'variants-0-is_active': 'on',
+        })
+        self.assertEqual(response.status_code, 302, response.content)
+        self.product.refresh_from_db()
+        self.assertEqual(self.product.name, 'Shirt Renamed')
+
+    def test_error_pages_are_custom(self):
+        """400/403/404/500 all render the branded pages with home/back actions."""
+        from django.test import RequestFactory
+
+        from apps.web.views import errors
+
+        self.login()
+        response = self.client.get('/this-page-does-not-exist/')
+        self.assertEqual(response.status_code, 404)
+        self.assertContains(response, 'Sahifa topilmadi', status_code=404)
+        self.assertContains(response, 'Bosh sahifaga', status_code=404)
+
+        rf = RequestFactory()
+        self.assertEqual(errors.bad_request(rf.get('/'), None).status_code, 400)
+        self.assertEqual(errors.permission_denied(rf.get('/'), None).status_code, 403)
+        err500 = errors.server_error(rf.get('/'))
+        self.assertEqual(err500.status_code, 500)
+        self.assertIn(b'Serverda xatolik', err500.content)
+        self.assertIn(b'Bosh sahifaga', err500.content)
+
     def test_pos_search(self):
         self.login()
         response = self.client.get(reverse('web:pos-search'), {'q': 'Shirt'})

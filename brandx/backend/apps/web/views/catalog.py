@@ -4,6 +4,7 @@ import io
 import barcode as barcode_lib
 from barcode.writer import ImageWriter
 from django.contrib import messages
+from django.db import IntegrityError, transaction
 from django.db.models import Q
 from django.forms import inlineformset_factory
 from django.http import HttpResponse
@@ -14,12 +15,13 @@ from apps.audit.services import log_action
 from apps.products.models import Category, Product, ProductVariant
 from apps.products.utils import generate_barcode
 from apps.web.decorators import manager_required, store_required
-from apps.web.forms import CategoryForm, ProductForm, VariantForm
+from apps.web.forms import (CategoryForm, DUPLICATE_BARCODE_MSG, ProductForm,
+                            VariantForm, VariantFormSetBase)
 from apps.web.i18n import translator
 from apps.web.views.helpers import paginate, page_title, query_without_page, resolve_lang
 
 VariantFormSet = inlineformset_factory(
-    Product, ProductVariant, form=VariantForm, extra=1, can_delete=True,
+    Product, ProductVariant, form=VariantForm, formset=VariantFormSetBase, extra=1, can_delete=True,
     fields=['color', 'size', 'barcode', 'selling_price', 'cost_price',
             'stock_quantity', 'low_stock_threshold', 'is_active'],
 )
@@ -62,35 +64,43 @@ def product_form(request, pk=None):
 
     if request.method == 'POST':
         form = ProductForm(request.POST, request.FILES, instance=product, store=store)
-        formset = VariantFormSet(request.POST, instance=product, prefix='variants')
+        formset = VariantFormSet(request.POST, instance=product, prefix='variants',
+                                 form_kwargs={'store': store})
         if form.is_valid() and formset.is_valid():
-            product = form.save(commit=False)
-            product.store = store
-            if not product.barcode:
-                product.barcode = generate_barcode()
-            product.save()
-            formset.instance = product
-            variants = formset.save(commit=False)
-            for deleted in formset.deleted_objects:
-                deleted.is_active = False
-                deleted.save(update_fields=['is_active', 'updated_at'])
-            for variant in variants:
-                variant.store = store
-                variant.product = product
-                if not variant.barcode:
-                    variant.barcode = generate_barcode()
-                if not variant.sku:
-                    variant.sku = variant.generate_sku()
-                variant.save()
-
-            action = AuditLog.ACTION_PRODUCT_UPDATED if pk else AuditLog.ACTION_PRODUCT_CREATED
-            log_action(action, user=request.user, entity='product', entity_id=product.pk,
-                       details={'name': product.name, 'barcode': product.barcode})
-            messages.success(request, translator(resolve_lang(request))('common.saved'))
-            return redirect('web:product-list')
+            try:
+                with transaction.atomic():
+                    product = form.save(commit=False)
+                    product.store = store
+                    if not product.barcode:
+                        product.barcode = generate_barcode()
+                    product.save()
+                    formset.instance = product
+                    variants = formset.save(commit=False)
+                    for deleted in formset.deleted_objects:
+                        deleted.is_active = False
+                        deleted.save(update_fields=['is_active', 'updated_at'])
+                    for variant in variants:
+                        variant.store = store
+                        variant.product = product
+                        if not variant.barcode:
+                            variant.barcode = generate_barcode()
+                        if not variant.sku:
+                            variant.sku = variant.generate_sku()
+                        variant.save()
+            except IntegrityError:
+                # Raced with someone else saving the same barcode just now:
+                # show a normal form error instead of a 500.
+                form.add_error('barcode', DUPLICATE_BARCODE_MSG)
+            else:
+                action = AuditLog.ACTION_PRODUCT_UPDATED if pk else AuditLog.ACTION_PRODUCT_CREATED
+                log_action(action, user=request.user, entity='product', entity_id=product.pk,
+                           details={'name': product.name, 'barcode': product.barcode})
+                messages.success(request, translator(resolve_lang(request))('common.saved'))
+                return redirect('web:product-list')
     else:
         form = ProductForm(instance=product, store=store)
-        formset = VariantFormSet(instance=product, prefix='variants')
+        formset = VariantFormSet(instance=product, prefix='variants',
+                                 form_kwargs={'store': store})
 
     return render(request, 'web/products/form.html', {
         'page_title': page_title(request, 'products.edit' if pk else 'products.new'),
